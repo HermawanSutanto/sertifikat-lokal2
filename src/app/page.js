@@ -246,41 +246,47 @@ export default function Home() {
   return (
     <>
       <Notification {...notification} />
-      <header className="bg-white dark:bg-slate-800 shadow-md">
+      <header className="bg-white shadow-md border-b border-blue-300">
         <div className="w-full max-w-7xl mx-auto p-4 flex justify-between items-center">
-          <p className="text-sm">
-            Login sebagai:{" "}
-            <strong className="font-semibold">{user.email}</strong>
-          </p>
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
-          >
-            Logout
-          </button>
+          <h1 className="text-xl font-bold text-blue-700">
+            Certificate Generator
+          </h1>
+          <div className="flex items-center gap-4">
+            <p className="text-sm text-blue-900">
+              Login sebagai: <strong>{user.email}</strong>
+            </p>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </header>
-      <main className="flex flex-col items-center min-h-screen bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 p-4 md:p-8">
-        <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <main className="flex flex-col items-center min-h-screen bg-blue-50 text-blue-900 p-6 md:p-10">
+        <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-10">
           {/* Kolom Kiri: Panel Kontrol */}
-          <div className="w-full p-8 space-y-6 bg-white dark:bg-slate-800 rounded-2xl shadow-lg">
+          <div className="w-full p-8 space-y-6 bg-white rounded-2xl shadow-lg border border-blue-200">
             <div className="text-center">
-              <h1 className="text-3xl font-bold">Certificate Generator</h1>
-              <p className="text-slate-500 dark:text-slate-400">
-                Atur dan buat sertifikat secara otomatis
+              <h2 className="text-4xl font-extrabold mb-2">
+                Certificate Generator
+              </h2>
+              <p className="text-blue-600 text-lg">
+                Atur dan buat sertifikat secara otomatis dengan mudah
               </p>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                <label className="block text-sm font-semibold text-blue-700 mb-2">
                   1. Upload Template
                 </label>
                 <label
                   htmlFor="file-upload"
-                  className="w-full flex items-center justify-center px-4 py-6 border-2 border-dashed rounded-lg cursor-pointer bg-slate-50 dark:bg-slate-700 border-slate-300 dark:border-slate-600 hover:border-indigo-500 transition-colors"
+                  className="w-full flex items-center justify-center px-5 py-7 border-2 border-dashed rounded-lg cursor-pointer bg-blue-100 border-blue-300 hover:border-blue-500 transition-colors"
                 >
                   <div className="text-center">
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                    <p className="text-sm text-blue-700">
                       {templateFile
                         ? `Ganti file: ${templateFile.name}`
                         : "Klik untuk memilih file"}
@@ -298,24 +304,26 @@ export default function Home() {
               <div>
                 <label
                   htmlFor="names"
-                  className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2"
+                  className="block text-sm font-semibold text-blue-700 mb-2"
                 >
                   2. Masukkan Nama (pisahkan koma)
                 </label>
                 <textarea
                   id="names"
                   rows={4}
-                  className="w-full px-3 py-2 border rounded-md shadow-sm resize-none bg-transparent border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                  className="w-full px-3 py-2 border rounded-md shadow-sm resize-none bg-blue-50 border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                   value={names}
                   onChange={(e) => setNames(e.target.value)}
                 />
               </div>
-              <div className="space-y-4 pt-2">
-                <h3 className="text-lg font-medium">3. Kustomisasi Teks</h3>
+              <div className="space-y-5 pt-3">
+                <h3 className="text-xl font-semibold text-blue-800">
+                  3. Kustomisasi Teks
+                </h3>
                 <div>
                   <label
                     htmlFor="fontSize"
-                    className="block text-sm font-medium"
+                    className="block text-sm font-semibold text-blue-700"
                   >
                     Ukuran Font: <span className="font-bold">{fontSize}px</span>
                   </label>
@@ -326,14 +334,14 @@ export default function Home() {
                     max="120"
                     value={fontSize}
                     onChange={(e) => setFontSize(e.target.value)}
-                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700"
+                    className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-5">
                   <div>
                     <label
                       htmlFor="fontFamily"
-                      className="block text-sm font-medium"
+                      className="block text-sm font-semibold text-blue-700"
                     >
                       Jenis Font
                     </label>
@@ -341,7 +349,7 @@ export default function Home() {
                       id="fontFamily"
                       value={fontFamily}
                       onChange={(e) => setFontFamily(e.target.value)}
-                      className="w-full mt-1 px-3 py-2 border rounded-md shadow-sm bg-transparent border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                      className="w-full mt-1 px-3 py-2 border rounded-md shadow-sm bg-white border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                     >
                       <option>Roboto</option>
                       <option>Montserrat</option>
@@ -356,7 +364,7 @@ export default function Home() {
                   <div>
                     <label
                       htmlFor="textColor"
-                      className="block text-sm font-medium"
+                      className="block text-sm font-semibold text-blue-700"
                     >
                       Warna Teks
                     </label>
@@ -365,7 +373,7 @@ export default function Home() {
                       type="color"
                       value={textColor}
                       onChange={(e) => setTextColor(e.target.value)}
-                      className="w-full mt-1 h-10 p-1 border rounded-md cursor-pointer bg-transparent border-slate-300 dark:border-slate-600"
+                      className="w-full mt-1 h-10 p-1 border rounded-md cursor-pointer bg-white border-blue-300"
                     />
                   </div>
                 </div>
@@ -374,7 +382,7 @@ export default function Home() {
             <button
               onClick={handleGenerate}
               disabled={isLoading || !templateFile}
-              className="w-full flex items-center justify-center px-4 py-3 font-semibold text-white bg-indigo-600 rounded-md shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-slate-400 disabled:cursor-not-allowed transition-all duration-300"
+              className="w-full flex items-center justify-center px-4 py-3 font-semibold text-white bg-blue-600 rounded-md shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300 disabled:cursor-not-allowed transition-all duration-300"
             >
               {isLoading ? (
                 <>
@@ -387,11 +395,11 @@ export default function Home() {
           </div>
 
           {/* Kolom Kanan: Pratinjau Interaktif */}
-          <div className="w-full p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-lg flex items-center justify-center lg:h-full">
+          <div className="w-full p-4 bg-white rounded-2xl shadow-lg flex items-center justify-center lg:h-full border border-blue-200">
             {previewUrl ? (
               <div
                 ref={previewContainerRef}
-                className="relative w-full max-w-[500px] aspect-[4/3] overflow-hidden border rounded-lg bg-slate-200"
+                className="relative w-full max-w-[500px] aspect-[4/3] overflow-hidden border rounded-lg bg-blue-50"
               >
                 <img
                   src={previewUrl}
@@ -426,9 +434,11 @@ export default function Home() {
                 )}
               </div>
             ) : (
-              <div className="w-full max-w-[500px] aspect-[4/3] flex flex-col items-center justify-center border-2 border-dashed rounded-lg text-center">
-                <p className="font-semibold">Pratinjau Template</p>
-                <p className="text-sm text-slate-500">
+              <div className="w-full max-w-[500px] aspect-[4/3] flex flex-col items-center justify-center border-2 border-dashed rounded-lg text-center border-blue-300 bg-blue-50">
+                <p className="font-semibold text-blue-700">
+                  Pratinjau Template
+                </p>
+                <p className="text-sm text-blue-600">
                   Upload template untuk mengatur posisi teks
                 </p>
               </div>
@@ -438,20 +448,22 @@ export default function Home() {
 
         {/* Daftar Hasil Generate */}
         <div className="w-full max-w-6xl mt-12">
-          <div className="p-8 bg-white dark:bg-slate-800 rounded-2xl shadow-lg">
-            <h2 className="text-2xl font-bold mb-6">Hasil Generate Terbaru</h2>
+          <div className="p-8 bg-white rounded-2xl shadow-lg border border-blue-200">
+            <h2 className="text-2xl font-bold mb-6 text-blue-900">
+              Hasil Generate Terbaru
+            </h2>
             {certificates.length > 0 ? (
               <div className="space-y-4">
                 {certificates.map((cert) => (
                   <div
                     key={cert.id}
-                    className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-slate-700"
+                    className="flex items-center justify-between p-4 rounded-lg bg-blue-50"
                   >
                     <div>
-                      <p className="font-semibold text-slate-800 dark:text-slate-200">
+                      <p className="font-semibold text-blue-900">
                         {cert.namaPeserta}
                       </p>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">
+                      <p className="text-sm text-blue-700">
                         Dibuat pada:{" "}
                         {new Date(
                           cert.dibuatPada.seconds * 1000
@@ -466,7 +478,7 @@ export default function Home() {
                       href={cert.urlSertifikat}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors"
+                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
                     >
                       Lihat
                     </a>
@@ -474,9 +486,7 @@ export default function Home() {
                 ))}
               </div>
             ) : (
-              <p className="text-slate-500 dark:text-slate-400">
-                Belum ada sertifikat yang dibuat.
-              </p>
+              <p className="text-blue-700">Belum ada sertifikat yang dibuat.</p>
             )}
           </div>
         </div>

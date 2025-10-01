@@ -26,41 +26,49 @@ export default function Login() {
   };
 
   return (
-    <main className="flex items-center justify-center min-h-screen bg-slate-100">
-      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-2xl shadow-lg">
-        <h1 className="text-3xl font-bold text-center">Login</h1>
-        <form onSubmit={handleLogin} className="space-y-4">
+    <main className="flex items-center justify-center min-h-screen bg-gradient-to-r from-blue-100 to-blue-200">
+      <div className="w-full max-w-md p-10 space-y-8 bg-white rounded-3xl shadow-xl border border-blue-300">
+        <h1 className="text-4xl font-extrabold text-center text-blue-700">
+          Login
+        </h1>
+        <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label>Email:</label>
+            <label className="block text-sm font-semibold text-blue-700 mb-2">
+              Email:
+            </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-3 py-2 mt-1 border rounded-md"
+              className="w-full px-4 py-3 border border-blue-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
             />
           </div>
           <div>
-            <label>Password:</label>
+            <label className="block text-sm font-semibold text-blue-700 mb-2">
+              Password:
+            </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-3 py-2 mt-1 border rounded-md"
+              className="w-full px-4 py-3 border border-blue-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
             />
           </div>
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {error && (
+            <p className="text-red-600 text-sm font-semibold">{error}</p>
+          )}
           <button
             type="submit"
-            className="w-full py-3 font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
+            className="w-full py-3 font-semibold text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 transition"
           >
             Login
           </button>
         </form>
-        <p className="text-center">
+        <p className="text-center text-blue-700">
           Belum punya akun?{" "}
-          <Link href="/register" className="text-indigo-600 hover:underline">
+          <Link href="/register" className="font-semibold hover:underline">
             Register di sini
           </Link>
         </p>
