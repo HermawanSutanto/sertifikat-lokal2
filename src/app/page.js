@@ -9,6 +9,7 @@ import { useAuth } from "../context/AuthContext"; // <-- Cukup satu impor useAut
 
 // Komponen ikon spinner untuk loading
 function Spinner(props) {
+  // ... (kode spinner tidak berubah)
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -345,6 +346,10 @@ export default function Home() {
                       <option>Roboto</option>
                       <option>Montserrat</option>
                       <option>Playfair Display</option>
+                      <option>Poppins</option>
+                      <option>Lora</option>
+                      <option>Pacifico</option>
+                      <option>Caveat</option>
                       <option>Arial</option>
                     </select>
                   </div>
