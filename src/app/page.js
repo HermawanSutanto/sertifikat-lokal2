@@ -93,9 +93,9 @@ export default function LandingPage() {
               </span>
             </h2>
             <p className="mt-6 text-lg text-gray-600 max-w-2xl mx-auto">
-              Ucapkan selamat tinggal pada proses desain manual. Cukup unggah
-              template, masukkan daftar nama, dan biarkan SertiGen mencetak
-              sertifikat profesional secara otomatis.
+              Ucapkan selamat tinggal pada proses input data manual. Cukup
+              unggah template, masukkan daftar nama, dan biarkan SertiGen
+              mencetak sertifikat profesional secara otomatis.
             </p>
             <div className="mt-10">
               <Link
