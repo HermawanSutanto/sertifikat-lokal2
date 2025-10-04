@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image"; // <-- TAMBAHKAN BARIS INI
 
 // Komponen ikon untuk bagian fitur
 const FeatureIcon = ({ children }) => (
@@ -92,9 +93,9 @@ export default function LandingPage() {
               </span>
             </h2>
             <p className="mt-6 text-lg text-gray-600 max-w-2xl mx-auto">
-              Ucapkan selamat tinggal pada proses desain manual. Cukup unggah
-              template, masukkan daftar nama, dan biarkan SertiGen mencetak
-              sertifikat profesional secara otomatis.
+              Ucapkan selamat tinggal pada proses input data manual. Cukup
+              unggah template, masukkan daftar nama, dan biarkan SertiGen
+              mencetak sertifikat profesional secara otomatis.
             </p>
             <div className="mt-10">
               <Link
@@ -112,11 +113,13 @@ export default function LandingPage() {
           <div className="container mx-auto px-6">
             <div className="w-full max-w-4xl mx-auto rounded-2xl shadow-2xl border border-slate-200 p-2 bg-slate-100">
               {/* Ganti div di bawah ini dengan screenshot atau GIF aplikasi Anda */}
-              <div className="aspect-video rounded-xl bg-slate-200 flex items-center justify-center">
-                <p className="text-slate-500 font-medium">
-                  [Tempat untuk Screenshot / GIF Aplikasi Anda]
-                </p>
-              </div>
+              <Image
+                src="/sertigen-demo.png" // Nama file gambar Anda di folder /public
+                alt="Demo Aplikasi SertiGen - Generator Sertifikat Otomatis"
+                width={1200} // Lebar asli gambar dalam pixel
+                height={675} // Tinggi asli gambar dalam pixel
+                className="rounded-xl w-full h-auto"
+              />
             </div>
           </div>
         </section>
@@ -217,9 +220,9 @@ export default function LandingPage() {
               {/* Testimoni 1 */}
               <div className="p-8 bg-white rounded-2xl shadow-sm">
                 <p className="text-gray-700 italic">
-                  "SertiGen benar-benar mengubah cara kami mengelola sertifikat
-                  webinar. Dari yang tadinya butuh berjam-jam, sekarang selesai
-                  dalam 5 menit. Luar biasa!"
+                  &quot;SertiGen benar-benar mengubah cara kami mengelola
+                  sertifikat webinar. Dari yang tadinya butuh berjam-jam,
+                  sekarang selesai dalam 5 menit. Luar biasa!&quot;
                 </p>
                 <div className="mt-6 flex items-center gap-4">
                   <div className="w-12 h-12 rounded-full bg-slate-200"></div>{" "}
@@ -235,9 +238,9 @@ export default function LandingPage() {
               {/* Testimoni 2 */}
               <div className="p-8 bg-white rounded-2xl shadow-sm">
                 <p className="text-gray-700 italic">
-                  "Awalnya ragu, tapi ternyata antarmukanya sangat mudah
+                  &quot;Awalnya ragu, tapi ternyata antarmukanya sangat mudah
                   digunakan. Fitur kustomisasi posisinya sangat membantu. Highly
-                  recommended!"
+                  recommended!&quot;
                 </p>
                 <div className="mt-6 flex items-center gap-4">
                   <div className="w-12 h-12 rounded-full bg-slate-200"></div>{" "}
@@ -255,9 +258,9 @@ export default function LandingPage() {
               {/* Testimoni 3 */}
               <div className="p-8 bg-white rounded-2xl shadow-sm">
                 <p className="text-gray-700 italic">
-                  "Fitur download semua sebagai ZIP adalah penyelamat. Tidak
-                  perlu lagi mengunduh satu per satu. Efisiensi kerja tim kami
-                  meningkat drastis."
+                  &quot;Fitur download semua sebagai ZIP adalah penyelamat.
+                  Tidak perlu lagi mengunduh satu per satu. Efisiensi kerja tim
+                  kami meningkat drastis.&quot;
                 </p>
                 <div className="mt-6 flex items-center gap-4">
                   <div className="w-12 h-12 rounded-full bg-slate-200"></div>{" "}
