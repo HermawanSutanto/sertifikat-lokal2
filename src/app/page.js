@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image"; // <-- TAMBAHKAN BARIS INI
 
 // Komponen ikon untuk bagian fitur
 const FeatureIcon = ({ children }) => (
@@ -6,6 +7,7 @@ const FeatureIcon = ({ children }) => (
     {children}
   </div>
 );
+
 export const metadata = {
   title: "SertiGen: Generator Sertifikat Online Cepat & Mudah",
   description:
@@ -15,11 +17,11 @@ export const metadata = {
   openGraph: {
     title: "SertiGen: Generator Sertifikat Online Cepat & Mudah",
     description: "Buat ribuan sertifikat personal secara otomatis dan cepat.",
-    url: "https://sertigen.com", // Ganti dengan URL domain Anda
+    url: "https://sertifikat-lokal2.vercel.app/", // Ganti dengan URL domain Anda
     siteName: "SertiGen",
     images: [
       {
-        url: "/og-image.png", // Buat gambar preview berukuran 1200x630px
+        url: "/og-image.png", // Pastikan gambar ini ada di folder /public
         width: 1200,
         height: 630
       }
@@ -28,20 +30,42 @@ export const metadata = {
     type: "website"
   },
   robots: {
-    index: true, // Izinkan Google untuk mengindeks halaman ini
+    index: true,
     follow: true
   }
 };
+
 export default function LandingPage() {
   return (
     <div className="flex flex-col min-h-screen bg-white text-slate-800">
       {/* Header */}
       <header className="w-full sticky top-0 bg-white/70 backdrop-blur-md shadow-sm z-50">
         <div className="container mx-auto flex justify-between items-center px-6 py-4">
-          <h1 className="text-2xl font-extrabold text-indigo-600 tracking-tight">
+          <Link
+            href="/"
+            className="text-2xl font-extrabold text-indigo-600 tracking-tight"
+          >
             SertiGen
-          </h1>
-          <nav className="space-x-2 md:space-x-4">
+          </Link>
+
+          {/* Navigasi Utama (disembunyikan di HP) */}
+          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-700">
+            <Link href="#features" className="hover:text-indigo-600 transition">
+              Fitur
+            </Link>
+            <Link
+              href="#how-it-works"
+              className="hover:text-indigo-600 transition"
+            >
+              Cara Kerja
+            </Link>
+            <Link href="/blog" className="hover:text-indigo-600 transition">
+              Blog
+            </Link>
+          </nav>
+
+          {/* Navigasi Aksi */}
+          <div className="flex items-center gap-2">
             <Link
               href="/login"
               className="px-5 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100 transition"
@@ -54,16 +78,16 @@ export default function LandingPage() {
             >
               Daftar Gratis
             </Link>
-          </nav>
+          </div>
         </div>
       </header>
 
       <main className="flex-grow">
         {/* Hero Section */}
-        <section className="min-h-screen flex items-center bg-gradient-to-br from-indigo-50 to-white">
-          <div className="container mx-auto text-center px-6 py-20 md:py-28">
+        <section className="pt-24 pb-12 flex items-center bg-gradient-to-br from-indigo-50 to-white">
+          <div className="container mx-auto text-center px-6">
             <h2 className="text-4xl md:text-6xl font-extrabold leading-tight text-slate-900">
-              Buat Ribuan Sertifikat Personal
+              Buat Ratusan Sertifikat Personal
               <span className="block text-indigo-600 mt-2">
                 dalam Hitungan Menit
               </span>
@@ -80,6 +104,22 @@ export default function LandingPage() {
               >
                 Mulai Membuat, Gratis!
               </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* BAGIAN BARU: Visual Produk */}
+        <section className="pb-20 pt-10 bg-white">
+          <div className="container mx-auto px-6">
+            <div className="w-full max-w-4xl mx-auto rounded-2xl shadow-2xl border border-slate-200 p-2 bg-slate-100">
+              {/* Ganti div di bawah ini dengan screenshot atau GIF aplikasi Anda */}
+              <Image
+                src="/sertigen-demo.png" // Nama file gambar Anda di folder /public
+                alt="Demo Aplikasi SertiGen - Generator Sertifikat Otomatis"
+                width={1200} // Lebar asli gambar dalam pixel
+                height={675} // Tinggi asli gambar dalam pixel
+                className="rounded-xl w-full h-auto"
+              />
             </div>
           </div>
         </section>
@@ -164,6 +204,81 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* BAGIAN BARU: Bukti Sosial (Testimonials) */}
+        <section id="testimonials" className="py-20 bg-slate-50">
+          <div className="container mx-auto px-6">
+            <div className="text-center mb-16">
+              <h3 className="text-3xl md:text-4xl font-bold text-slate-900">
+                Dipercaya oleh Penyelenggara Acara
+              </h3>
+              <p className="mt-4 text-gray-600 max-w-xl mx-auto">
+                Lihat apa kata mereka yang telah menghemat waktu dengan
+                SertiGen.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {/* Testimoni 1 */}
+              <div className="p-8 bg-white rounded-2xl shadow-sm">
+                <p className="text-gray-700 italic">
+                  "SertiGen benar-benar mengubah cara kami mengelola sertifikat
+                  webinar. Dari yang tadinya butuh berjam-jam, sekarang selesai
+                  dalam 5 menit. Luar biasa!"
+                </p>
+                <div className="mt-6 flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-slate-200"></div>{" "}
+                  {/* Placeholder Foto */}
+                  <div>
+                    <p className="font-semibold text-slate-900">Budi Santoso</p>
+                    <p className="text-sm text-gray-600">
+                      Event Organizer, TechTalks ID
+                    </p>
+                  </div>
+                </div>
+              </div>
+              {/* Testimoni 2 */}
+              <div className="p-8 bg-white rounded-2xl shadow-sm">
+                <p className="text-gray-700 italic">
+                  "Awalnya ragu, tapi ternyata antarmukanya sangat mudah
+                  digunakan. Fitur kustomisasi posisinya sangat membantu. Highly
+                  recommended!"
+                </p>
+                <div className="mt-6 flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-slate-200"></div>{" "}
+                  {/* Placeholder Foto */}
+                  <div>
+                    <p className="font-semibold text-slate-900">
+                      Citra Lestari
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Panitia, Lomba Desain Nasional
+                    </p>
+                  </div>
+                </div>
+              </div>
+              {/* Testimoni 3 */}
+              <div className="p-8 bg-white rounded-2xl shadow-sm">
+                <p className="text-gray-700 italic">
+                  "Fitur download semua sebagai ZIP adalah penyelamat. Tidak
+                  perlu lagi mengunduh satu per satu. Efisiensi kerja tim kami
+                  meningkat drastis."
+                </p>
+                <div className="mt-6 flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-slate-200"></div>{" "}
+                  {/* Placeholder Foto */}
+                  <div>
+                    <p className="font-semibold text-slate-900">
+                      Rian Adriansyah
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Koordinator, Pelatihan Digital Marketing
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Cara Kerja */}
         <section id="how-it-works" className="py-20 bg-slate-50">
           <div className="container mx-auto px-6">
@@ -207,6 +322,109 @@ export default function LandingPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* BAGIAN BARU: FAQ */}
+        <section id="faq" className="py-20 bg-slate-50">
+          <div className="container mx-auto px-6">
+            <div className="text-center mb-16">
+              <h3 className="text-3xl md:text-4xl font-bold text-slate-900">
+                Pertanyaan yang Sering Diajukan
+              </h3>
+              <p className="mt-4 text-gray-600 max-w-xl mx-auto">
+                Punya pertanyaan? Kami punya jawabannya.
+              </p>
+            </div>
+            <div className="max-w-3xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div>
+                <h4 className="font-semibold text-lg mb-2">
+                  Apakah SertiGen gratis?
+                </h4>
+                <p className="text-gray-600">
+                  Ya, Anda bisa memulai secara gratis! Paket gratis kami
+                  memungkinkan Anda untuk membuat hingga 50 sertifikat untuk
+                  mencoba semua fitur utama SertiGen.
+                </p>
+              </div>
+              <div>
+                <h4 className="font-semibold text-lg mb-2">
+                  Format file apa yang didukung?
+                </h4>
+                <p className="text-gray-600">
+                  Anda dapat mengunggah template sertifikat dalam format gambar
+                  populer seperti JPG atau PNG untuk hasil terbaik.
+                </p>
+              </div>
+              <div>
+                <h4 className="font-semibold text-lg mb-2">
+                  Berapa banyak sertifikat yang bisa saya buat?
+                </h4>
+                <p className="text-gray-600">
+                  Dengan paket premium kami, tidak ada batasan jumlah sertifikat
+                  yang bisa Anda hasilkan. Untuk paket gratis, batasnya adalah
+                  50 sertifikat.
+                </p>
+              </div>
+              <div>
+                <h4 className="font-semibold text-lg mb-2">
+                  Apakah data saya aman?
+                </h4>
+                <p className="text-gray-600">
+                  Tentu saja. Kami sangat menjaga privasi data Anda. Daftar nama
+                  yang Anda unggah hanya digunakan untuk proses pembuatan
+                  sertifikat dan tidak akan dibagikan.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* BAGIAN BARU: Dari Blog Kami */}
+        <section id="blog-preview" className="py-20 bg-white">
+          <div className="container mx-auto px-6">
+            <div className="text-center mb-16">
+              <h3 className="text-3xl md:text-4xl font-bold text-slate-900">
+                Dari Blog Kami
+              </h3>
+              <p className="mt-4 text-gray-600 max-w-xl mx-auto">
+                Baca tips dan panduan terbaru seputar dunia sertifikat.
+              </p>
+            </div>
+            <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Post 1 */}
+              <Link
+                href="/blog/10-font-terbaik-untuk-sertifikat"
+                className="block p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-slate-100"
+              >
+                <h4 className="font-bold text-xl text-indigo-700">
+                  10 Font Terbaik dan Profesional untuk Desain Sertifikat Resmi
+                </h4>
+                <p className="mt-2 text-gray-600">
+                  Memilih font yang tepat adalah kunci untuk desain sertifikat
+                  yang terlihat profesional...
+                </p>
+                <div className="text-indigo-600 font-semibold mt-4 inline-block">
+                  Baca Selengkapnya →
+                </div>
+              </Link>
+              {/* Post 2 */}
+              <Link
+                href="/blog/cara-membuat-sertifikat-webinar"
+                className="block p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-slate-100"
+              >
+                <h4 className="font-bold text-xl text-indigo-700">
+                  5 Langkah Mudah Membuat Sertifikat Webinar Profesional
+                </h4>
+                <p className="mt-2 text-gray-600">
+                  Webinar Anda sukses besar? Saatnya memberikan apresiasi kepada
+                  peserta dengan sertifikat...
+                </p>
+                <div className="text-indigo-600 font-semibold mt-4 inline-block">
+                  Baca Selengkapnya →
+                </div>
+              </Link>
             </div>
           </div>
         </section>
