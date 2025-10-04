@@ -220,9 +220,9 @@ export default function LandingPage() {
               {/* Testimoni 1 */}
               <div className="p-8 bg-white rounded-2xl shadow-sm">
                 <p className="text-gray-700 italic">
-                  "SertiGen benar-benar mengubah cara kami mengelola sertifikat
-                  webinar. Dari yang tadinya butuh berjam-jam, sekarang selesai
-                  dalam 5 menit. Luar biasa!"
+                  &quot;SertiGen benar-benar mengubah cara kami mengelola
+                  sertifikat webinar. Dari yang tadinya butuh berjam-jam,
+                  sekarang selesai dalam 5 menit. Luar biasa!&quot;
                 </p>
                 <div className="mt-6 flex items-center gap-4">
                   <div className="w-12 h-12 rounded-full bg-slate-200"></div>{" "}
@@ -238,9 +238,9 @@ export default function LandingPage() {
               {/* Testimoni 2 */}
               <div className="p-8 bg-white rounded-2xl shadow-sm">
                 <p className="text-gray-700 italic">
-                  "Awalnya ragu, tapi ternyata antarmukanya sangat mudah
+                  &quot;Awalnya ragu, tapi ternyata antarmukanya sangat mudah
                   digunakan. Fitur kustomisasi posisinya sangat membantu. Highly
-                  recommended!"
+                  recommended!&quot;
                 </p>
                 <div className="mt-6 flex items-center gap-4">
                   <div className="w-12 h-12 rounded-full bg-slate-200"></div>{" "}
@@ -258,9 +258,9 @@ export default function LandingPage() {
               {/* Testimoni 3 */}
               <div className="p-8 bg-white rounded-2xl shadow-sm">
                 <p className="text-gray-700 italic">
-                  "Fitur download semua sebagai ZIP adalah penyelamat. Tidak
-                  perlu lagi mengunduh satu per satu. Efisiensi kerja tim kami
-                  meningkat drastis."
+                  &quot;Fitur download semua sebagai ZIP adalah penyelamat.
+                  Tidak perlu lagi mengunduh satu per satu. Efisiensi kerja tim
+                  kami meningkat drastis.&quot;
                 </p>
                 <div className="mt-6 flex items-center gap-4">
                   <div className="w-12 h-12 rounded-full bg-slate-200"></div>{" "}

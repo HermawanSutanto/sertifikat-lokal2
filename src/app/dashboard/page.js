@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Draggable from "react-draggable";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
@@ -117,7 +117,7 @@ export default function Dashboard() {
   }, [user, loading, router]);
 
   // Fungsi untuk mengambil halaman pertama sertifikat
-  const fetchInitialCertificates = async () => {
+  const fetchInitialCertificates = useCallback(async () => {
     if (!user) return;
     try {
       const token = await user.getIdToken();
@@ -132,7 +132,7 @@ export default function Dashboard() {
     } catch (error) {
       console.error("Gagal mengambil daftar sertifikat:", error);
     }
-  };
+  }, [user]);
 
   // Fungsi untuk memuat halaman sertifikat berikutnya
   const handleLoadMore = async () => {
@@ -163,7 +163,7 @@ export default function Dashboard() {
     if (user) {
       fetchInitialCertificates();
     }
-  }, [user]);
+  }, [user, fetchInitialCertificates]);
 
   // Fungsi Generate dengan Batch Processing (Chunking)
   const handleGenerate = async () => {
