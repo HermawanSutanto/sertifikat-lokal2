@@ -1,5 +1,3 @@
-// src/app/api/certificates/route.js
-
 import { db } from "../../../lib/firebase";
 import {
   collection,
@@ -7,14 +5,19 @@ import {
   query,
   where,
   orderBy,
-  limit
+  limit,
+  startAfter,
+  doc,
+  getDoc
 } from "firebase/firestore";
 import { NextResponse } from "next/server";
 import admin from "../../../lib/firebaseAdmin";
 
+const PAGE_SIZE = 10; // Jumlah sertifikat yang akan diambil per halaman
+
 export async function GET(req) {
   try {
-    // 1. Verifikasi Token Otentikasi untuk memastikan pengguna login
+    // 1. Verifikasi Token Otentikasi (tidak berubah)
     const authorization = req.headers.get("Authorization");
     if (!authorization?.startsWith("Bearer ")) {
       return NextResponse.json(
@@ -26,7 +29,6 @@ export async function GET(req) {
 
     let decodedToken;
     try {
-      // Kode ini sudah menggunakan admin.auth() yang benar
       decodedToken = await admin.auth().verifyIdToken(idToken);
     } catch (error) {
       return NextResponse.json(
@@ -43,14 +45,32 @@ export async function GET(req) {
       );
     }
 
-    // 2. Ambil data sertifikat HANYA untuk pengguna dengan UID yang sesuai
+    // --- LOGIKA PAGINATION DIMULAI DI SINI ---
+
+    const { searchParams } = new URL(req.url);
+    const lastVisibleId = searchParams.get("lastVisible");
+
     const certificatesRef = collection(db, "sertifikat_terbuat");
-    const q = query(
-      certificatesRef,
-      where("userId", "==", uid), // <-- Filter berdasarkan UID pengguna
+    let q;
+
+    const queryConstraints = [
+      where("userId", "==", uid),
       orderBy("dibuatPada", "desc"),
-      limit(20)
-    );
+      limit(PAGE_SIZE)
+    ];
+
+    if (lastVisibleId) {
+      const lastVisibleDoc = await getDoc(
+        doc(db, "sertifikat_terbuat", lastVisibleId)
+      );
+      if (lastVisibleDoc.exists()) {
+        queryConstraints.push(startAfter(lastVisibleDoc));
+      }
+    }
+
+    q = query(certificatesRef, ...queryConstraints);
+
+    // --- LOGIKA PAGINATION SELESAI ---
 
     const querySnapshot = await getDocs(q);
     const certificates = [];
@@ -58,7 +78,12 @@ export async function GET(req) {
       certificates.push({ id: doc.id, ...doc.data() });
     });
 
-    return NextResponse.json({ certificates });
+    // Dapatkan ID dokumen terakhir untuk halaman berikutnya
+    const lastDocId =
+      querySnapshot.docs[querySnapshot.docs.length - 1]?.id || null;
+    const hasMore = certificates.length === PAGE_SIZE;
+
+    return NextResponse.json({ certificates, lastDocId, hasMore });
   } catch (error) {
     console.error("Error fetching certificates:", error);
     return NextResponse.json(

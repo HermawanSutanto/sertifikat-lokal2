@@ -6,32 +6,7 @@ const FeatureIcon = ({ children }) => (
     {children}
   </div>
 );
-export const metadata = {
-  title: "SertiGen: Generator Sertifikat Online Cepat & Mudah",
-  description:
-    "Buat ribuan sertifikat personal secara otomatis. Cukup unggah template, masukkan daftar nama, dan unduh sertifikat berkualitas tinggi dalam hitungan menit.",
-  keywords:
-    "generator sertifikat, buat sertifikat online, aplikasi sertifikat, sertifikat massal, otomatisasi sertifikat, SertiGen",
-  openGraph: {
-    title: "SertiGen: Generator Sertifikat Online Cepat & Mudah",
-    description: "Buat ribuan sertifikat personal secara otomatis dan cepat.",
-    url: "https://sertigen.com", // Ganti dengan URL domain Anda
-    siteName: "SertiGen",
-    images: [
-      {
-        url: "/og-image.png", // Buat gambar preview berukuran 1200x630px
-        width: 1200,
-        height: 630
-      }
-    ],
-    locale: "id_ID",
-    type: "website"
-  },
-  robots: {
-    index: true, // Izinkan Google untuk mengindeks halaman ini
-    follow: true
-  }
-};
+
 export default function LandingPage() {
   return (
     <div className="flex flex-col min-h-screen bg-white text-slate-800">

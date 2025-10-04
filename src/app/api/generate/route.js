@@ -1,5 +1,3 @@
-// src/app/api/generate/route.js
-
 import { supabase } from "../../../lib/supabase";
 import { db } from "../../../lib/firebase";
 import {
@@ -10,9 +8,9 @@ import {
 } from "firebase/firestore";
 import sharp from "sharp";
 import { NextResponse } from "next/server";
-import admin from "../../../lib/firebaseAdmin"; // <-- IMPORT FIREBASE ADMIN
+import admin from "../../../lib/firebaseAdmin";
 
-// Fungsi cache untuk font (tidak ada perubahan)
+// Helper function untuk mengambil cache font
 const fontCache = new Map();
 async function getFontBase64(fontFamily) {
   if (fontCache.has(fontFamily)) {
@@ -24,6 +22,12 @@ async function getFontBase64(fontFamily) {
       "https://fonts.gstatic.com/s/montserrat/v25/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCtr6Hw5aXo.ttf",
     "Playfair Display":
       "https://fonts.gstatic.com/s/playfairdisplay/v30/nuFvD-vYSZviVYUb_rj3ij__anPXJzDwcbmjWos7joP-pg.ttf",
+    Poppins:
+      "https://fonts.gstatic.com/s/poppins/v20/pxiByp8kv8JHgFVrJ-FnVw.ttf",
+    Lora: "https://fonts.gstatic.com/s/lora/v26/0QI6MX1D_JOuGQREALo.ttf",
+    Pacifico:
+      "https://fonts.gstatic.com/s/pacifico/v22/FwZY7-Qmy14u9lezJ-6H6MmBp0u-zK4.ttf",
+    Caveat: "https://fonts.gstatic.com/s/caveat/v17/WnznHAc5bAfYB2Q7azg.ttf",
     Arial: "https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Me5Q.ttf"
   };
   const fontUrl = fontUrlMap[fontFamily] || fontUrlMap["Roboto"];
@@ -40,51 +44,84 @@ async function getFontBase64(fontFamily) {
   }
 }
 
+// Helper function untuk membuat layer SVG
+function generateSvgLayer({
+  text,
+  textColor,
+  fontSize,
+  fontFamily,
+  fontBase64,
+  positionX,
+  positionY,
+  imageWidth,
+  imageHeight
+}) {
+  const svgText = `
+    <svg width="${imageWidth}" height="${imageHeight}" xmlns="http://www.w3.org/2000/svg">
+      <style>
+        @font-face {
+          font-family: "${fontFamily}";
+          src: url(data:font/ttf;base64,${fontBase64});
+        }
+        .title {
+          fill: ${textColor};
+          font-size: ${fontSize}px;
+          font-weight: bold;
+          font-family: "${fontFamily}", sans-serif;
+        }
+      </style>
+      <text x="${positionX}" y="${positionY}" text-anchor="middle" dominant-baseline="middle" class="title">${text.trim()}</text>
+    </svg>`;
+  return Buffer.from(svgText);
+}
+
 export async function POST(req) {
   try {
-    // 1. Verifikasi Token Otentikasi dan dapatkan UID
+    // 1. Autentikasi
     const authorization = req.headers.get("Authorization");
     if (!authorization?.startsWith("Bearer ")) {
       return NextResponse.json(
-        { message: "Token tidak ditemukan atau format salah" },
+        { message: "Token tidak ditemukan" },
         { status: 401 }
       );
     }
     const idToken = authorization.split("Bearer ")[1];
-
-    let decodedToken;
-    try {
-      // PERBAIKAN: Gunakan admin.auth() langsung
-      decodedToken = await admin.auth().verifyIdToken(idToken);
-    } catch (error) {
-      console.error("Firebase Auth Error:", error);
-      return NextResponse.json(
-        { message: "Sesi tidak valid atau kadaluwarsa" },
-        { status: 403 }
-      );
-    }
-
-    const uid = decodedToken.uid; // <-- UID pengguna didapatkan di sini
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const uid = decodedToken.uid;
     if (!uid) {
       return NextResponse.json(
-        { message: "UID tidak ditemukan di dalam token" },
+        { message: "UID tidak ditemukan" },
         { status: 403 }
       );
     }
 
-    // Parsing & Persiapan Awal (Tidak ada perubahan di bagian ini)
+    // 2. Parsing FormData
     const formData = await req.formData();
     const templateFile = formData.get("template");
-    const namesField = formData.get("names");
+    const previewWidth = parseInt(formData.get("previewWidth"), 10) || 500;
+
+    // Data Teks Utama
+    const namesField = formData.get("namesField");
     const positionXPercent =
       parseFloat(formData.get("positionXPercent")) || 0.5;
     const positionYPercent =
       parseFloat(formData.get("positionYPercent")) || 0.5;
-    const previewFontSize = parseInt(formData.get("fontSize"), 10) || 48;
-    const previewWidth = parseInt(formData.get("previewWidth"), 10) || 500;
+    const fontSize = parseInt(formData.get("fontSize"), 10) || 48;
     const fontFamily = formData.get("fontFamily") || "Roboto";
     const textColor = formData.get("textColor") || "#333333";
 
+    // Data Teks Sekunder (Opsional)
+    const secondaryTextField = formData.get("secondaryTextField");
+    const secondaryPositionXPercent =
+      parseFloat(formData.get("secondaryPositionXPercent")) || 0.5;
+    const secondaryPositionYPercent =
+      parseFloat(formData.get("secondaryPositionYPercent")) || 0.6;
+    const secondaryFontSize =
+      parseInt(formData.get("secondaryFontSize"), 10) || 24;
+    const secondaryFontFamily = formData.get("secondaryFontFamily") || "Roboto";
+    const secondaryTextColor = formData.get("secondaryTextColor") || "#333333";
+
+    // Validasi
     if (!templateFile || !namesField) {
       return NextResponse.json(
         { message: "Data tidak lengkap" },
@@ -92,99 +129,132 @@ export async function POST(req) {
       );
     }
 
+    // 3. Persiapan Data
     const names = namesField.split(",").map((name) => name.trim());
+    const secondaryTexts = secondaryTextField
+      ? secondaryTextField.split(",").map((text) => text.trim())
+      : [];
     let templateFileBuffer = Buffer.from(await templateFile.arrayBuffer());
 
-    const metadata = await sharp(templateFileBuffer).metadata();
-    const imageWidth = metadata.width;
-    const imageHeight = metadata.height;
-
+    // Optimasi Gambar Template
     const maxSizeInBytes = 2 * 1024 * 1024;
     if (templateFileBuffer.length > maxSizeInBytes) {
       templateFileBuffer = await sharp(templateFileBuffer)
         .resize({ width: 1920, withoutEnlargement: true })
-        .png({ quality: 80 })
+        .jpeg({ quality: 80 })
         .toBuffer();
     }
 
-    const fontBase64 = await getFontBase64(fontFamily);
-    if (!fontBase64) throw new Error("Tidak bisa memuat font.");
-
+    const metadata = await sharp(templateFileBuffer).metadata();
+    const imageWidth = metadata.width;
+    const imageHeight = metadata.height;
     const baseImage = sharp(templateFileBuffer);
+    const scaleFactor = imageWidth / previewWidth;
 
-    // Generate, Upload, dan Simpan (Tidak ada perubahan di bagian ini)
-    const generatedDataPromises = names.map(async (name) => {
-      const finalX = imageWidth * positionXPercent;
-      const finalY = imageHeight * positionYPercent;
-      const scaleFactor = imageWidth / previewWidth;
-      const finalFontSize = Math.round(previewFontSize * scaleFactor);
+    // Persiapan Font
+    const primaryFontBase64 = await getFontBase64(fontFamily);
+    const secondaryFontBase64 = await getFontBase64(secondaryFontFamily);
 
-      const svgText = `
-        <svg width="${imageWidth}" height="${imageHeight}" xmlns="http://www.w3.org/2000/svg">
-          <style>@font-face {font-family: "${fontFamily}"; src: url(data:font/ttf;base64,${fontBase64});} .title { fill: ${textColor}; font-size: ${finalFontSize}px; font-weight: bold; font-family: "${fontFamily}", sans-serif; }</style>
-          <text x="${finalX}" y="${finalY}" text-anchor="middle" dominant-baseline="middle" class="title">${name.trim()}</text>
-        </svg>`;
-      const svgBuffer = Buffer.from(svgText);
+    // 4. Proses Generate Gambar secara Paralel
+    const generatedDataPromises = names.map(async (name, index) => {
+      const compositeLayers = [];
 
+      // Layer Teks Utama
+      const nameLayer = generateSvgLayer({
+        text: name,
+        textColor,
+        fontSize: Math.round(fontSize * scaleFactor),
+        fontFamily,
+        fontBase64: primaryFontBase64,
+        positionX: imageWidth * positionXPercent,
+        positionY: imageHeight * positionYPercent,
+        imageWidth,
+        imageHeight
+      });
+      compositeLayers.push({ input: nameLayer, top: 0, left: 0 });
+
+      // Layer Teks Sekunder (jika ada)
+      const secondaryText = secondaryTexts[index] || secondaryTexts[0];
+      if (secondaryText) {
+        const secondaryLayer = generateSvgLayer({
+          text: secondaryText,
+          textColor: secondaryTextColor,
+          fontSize: Math.round(secondaryFontSize * scaleFactor),
+          fontFamily: secondaryFontFamily,
+          fontBase64: secondaryFontBase64,
+          positionX: imageWidth * secondaryPositionXPercent,
+          positionY: imageHeight * secondaryPositionYPercent,
+          imageWidth,
+          imageHeight
+        });
+        compositeLayers.push({ input: secondaryLayer, top: 0, left: 0 });
+      }
+
+      // Gabungkan layer dan hasilkan buffer gambar
       const generatedCertBuffer = await baseImage
         .clone()
-        .composite([{ input: svgBuffer, top: 0, left: 0 }])
-        .png({ quality: 85 })
+        .composite(compositeLayers)
+        .jpeg({ quality: 85 })
         .toBuffer();
-
       return { name, buffer: generatedCertBuffer };
     });
 
     const allGeneratedData = await Promise.all(generatedDataPromises);
 
+    // 5. Upload ke Supabase secara Paralel
     const uploadPromises = allGeneratedData.map(async (data) => {
       const certPath = `sertifikat-${data.name.replace(
         /\s+/g,
         "-"
-      )}-${Date.now()}.png`;
+      )}-${Date.now()}.jpeg`;
       await supabase.storage
         .from("generated-certificates")
-        .upload(certPath, data.buffer, { contentType: "image/png" });
-
+        .upload(certPath, data.buffer, { contentType: "image/jpeg" });
       const {
         data: { publicUrl }
       } = supabase.storage
         .from("generated-certificates")
         .getPublicUrl(certPath);
-
       return { name: data.name, url: publicUrl };
     });
 
     const allUploadedCerts = await Promise.all(uploadPromises);
 
+    // 6. Simpan Metadata ke Firestore dalam Satu Batch
     const batch = writeBatch(db);
     allUploadedCerts.forEach((cert) => {
       const docRef = doc(collection(db, "sertifikat_terbuat"));
       batch.set(docRef, {
-        userId: uid, // <-- TAMBAHKAN UID PENGGUNA DI SINI
+        userId: uid,
         namaPeserta: cert.name,
         urlSertifikat: cert.url,
         dibuatPada: serverTimestamp(),
         customization: {
           positionXPercent,
           positionYPercent,
-          fontSize: previewFontSize,
+          fontSize,
           fontFamily,
-          textColor
+          textColor,
+          secondaryTextField: secondaryTextField || null,
+          secondaryPositionXPercent,
+          secondaryPositionYPercent,
+          secondaryFontSize,
+          secondaryFontFamily,
+          secondaryTextColor
         }
       });
     });
 
     await batch.commit();
 
-    const certificateUrls = allUploadedCerts.map((cert) => cert.url);
-
-    return NextResponse.json({ message: "Sukses!", certificateUrls });
+    // 7. Kirim Response Sukses
+    return NextResponse.json({
+      certificateUrls: allUploadedCerts.map((cert) => cert.url)
+    });
   } catch (error) {
     console.error("Kesalahan di API generate:", error);
-    return NextResponse.json(
-      { message: error.message || "Terjadi kesalahan internal pada server." },
-      { status: 500 }
-    );
+    const errorMessage =
+      error instanceof Error ? error.message : "Terjadi kesalahan internal.";
+    return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }
