@@ -1,6 +1,7 @@
 "use client";
+import Image from "next/image";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Draggable from "react-draggable";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
@@ -70,6 +71,7 @@ export default function Dashboard() {
   const [csvData, setCsvData] = useState([]);
   const [csvHeaders, setCsvHeaders] = useState([]);
   const [mapping, setMapping] = useState({});
+  const elementRefs = useRef(new Map());
   const [textElements, setTextElements] = useState([
     {
       id: 1,
@@ -78,8 +80,7 @@ export default function Dashboard() {
       positionPercent: { x: 0.5, y: 0.5 },
       fontSize: 48,
       fontFamily: "Roboto",
-      textColor: "#333333",
-      ref: useRef(null)
+      textColor: "#333333"
     },
     {
       id: 2,
@@ -88,11 +89,17 @@ export default function Dashboard() {
       positionPercent: { x: 0.5, y: 0.6 },
       fontSize: 24,
       fontFamily: "Roboto",
-      textColor: "#555555",
-      ref: useRef(null)
+      textColor: "#555555"
     }
   ]);
-
+  useEffect(() => {
+    textElements.forEach((el) => {
+      // Kita akan gunakan metode Map di sini, sesuai perbaikan #2
+      if (!elementRefs.current.has(el.id)) {
+        elementRefs.current.set(el.id, React.createRef());
+      }
+    });
+  }, [textElements]);
   // State untuk Pagination & Download
   const [certificates, setCertificates] = useState([]);
   const [lastDocId, setLastDocId] = useState(null);
@@ -392,6 +399,9 @@ export default function Dashboard() {
       console.error("Error signing out:", error);
     }
   };
+  const handleCreateDesign = async () => {
+    router.push("/create-design");
+  };
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -435,7 +445,7 @@ export default function Dashboard() {
           {/* SISI KANAN: Kumpulan Aksi (Tombol & User Info) */}
           <div className="flex items-center gap-4">
             <button
-              onClick={handlecreatedesign} // Pastikan nama fungsi ini sudah benar
+              onClick={handleCreateDesign} // Pastikan nama fungsi ini sudah benar
               className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg shadow-sm hover:bg-indigo-700 flex items-center gap-2 transition-colors"
             >
               <svg
@@ -573,7 +583,7 @@ export default function Dashboard() {
                     className="grid grid-cols-2 items-center gap-4"
                   >
                     <label className="font-medium text-sm">
-                      Elemen "{element.label}"
+                      Elemen: {element.label}
                     </label>
                     <select
                       value={mapping[element.label] || ""}
@@ -710,30 +720,44 @@ export default function Dashboard() {
                 ref={previewContainerRef}
                 className="relative w-full max-w-[500px] aspect-video overflow-hidden border rounded-lg"
               >
-                <img
+                <Image
                   src={previewUrl}
                   alt="Template Preview"
-                  className="w-full h-full object-contain"
+                  fill // 'fill' akan membuat gambar mengisi div induk
+                  style={{ objectFit: "contain" }} // Menggantikan className="object-contain"
                 />
                 {textElements.map((element) => {
+                  // Fungsi untuk mendapatkan atau membuat ref untuk sebuah elemen
+                  const getRef = (id) => {
+                    if (!elementRefs.current.has(id)) {
+                      elementRefs.current.set(id, createRef());
+                    }
+                    return elementRefs.current.get(id);
+                  };
+
+                  // Ambil ref yang stabil untuk elemen ini
+                  const nodeRef = getRef(element.id);
+
+                  // Hitung posisi piksel menggunakan ref yang baru didapat
                   const pixelPosition = {
                     x:
                       previewSize.width * element.positionPercent.x -
-                      (element.ref.current?.offsetWidth / 2 || 0),
+                      (nodeRef.current?.offsetWidth / 2 || 0),
                     y:
                       previewSize.height * element.positionPercent.y -
-                      (element.ref.current?.offsetHeight / 2 || 0)
+                      (nodeRef.current?.offsetHeight / 2 || 0)
                   };
+
                   return (
                     <Draggable
                       key={element.id}
-                      nodeRef={element.ref}
+                      nodeRef={nodeRef} // <-- Gunakan ref dari wadah
                       bounds="parent"
                       position={pixelPosition}
                       onStop={createDragHandler(element.id)}
                     >
                       <div
-                        ref={element.ref}
+                        ref={nodeRef} // <-- Gunakan ref dari wadah
                         className="cursor-move absolute p-2"
                         style={{ top: 0, left: 0, whiteSpace: "nowrap" }}
                       >

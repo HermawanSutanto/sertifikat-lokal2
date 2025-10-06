@@ -1,21 +1,28 @@
 "use client";
-
-import { useState, useEffect, useRef, useCallback } from "react";
+import Image from "next/image";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  createRef
+} from "react";
 import Draggable from "react-draggable";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { auth } from "../../lib/firebase";
 import { useAuth } from "../../context/AuthContext";
-import JSZip from "jszip";
+import Papa from "papaparse";
 import { saveAs } from "file-saver";
 
+// Komponen Spinner
 // Komponen Spinner
 const Spinner = (props) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="24"
     height="24"
-    viewBox="0 0 24"
+    viewBox="0 0 24 24"
     {...props}
   >
     <path
@@ -33,7 +40,6 @@ const Spinner = (props) => (
     </path>
   </svg>
 );
-
 // Komponen Notifikasi
 const Notification = ({ message, type, show }) => {
   const bgColor = type === "success" ? "bg-green-600" : "bg-red-600";
@@ -64,25 +70,43 @@ export default function Dashboard() {
     type: "success"
   });
 
-  // State untuk Teks Utama (Nama)
-  const [names, setNames] = useState("Andi Budi, Candra Dwi");
-  const [positionPercent, setPositionPercent] = useState({ x: 0.5, y: 0.5 });
-  const [fontSize, setFontSize] = useState(48);
-  const [fontFamily, setFontFamily] = useState("Roboto");
-  const [textColor, setTextColor] = useState("#333333");
+  // State untuk mode input & data dinamis
+  const [inputMode, setInputMode] = useState("manual"); // 'manual' atau 'csv'
+  const [manualNames, setManualNames] = useState("Andi Budi, Candra Dwi");
+  const [csvData, setCsvData] = useState([]);
+  const [csvHeaders, setCsvHeaders] = useState([]);
+  const [mapping, setMapping] = useState({});
+  const elementRefs = useRef(new Map());
 
-  // State untuk Teks Sekunder (Jabatan, dll.)
-  const [showSecondaryControls, setShowSecondaryControls] = useState(false);
-  const [secondaryText, setSecondaryText] = useState(
-    "Peserta Webinar, Juara 1"
-  );
-  const [secondaryPositionPercent, setSecondaryPositionPercent] = useState({
-    x: 0.5,
-    y: 0.6
-  });
-  const [secondaryFontSize, setSecondaryFontSize] = useState(24);
-  const [secondaryFontFamily, setSecondaryFontFamily] = useState("Roboto");
-  const [secondaryTextColor, setSecondaryTextColor] = useState("#555555");
+  const [textElements, setTextElements] = useState([
+    {
+      id: 1,
+      label: "NAMA_PESERTA",
+      textPreview: "Nama Peserta",
+      positionPercent: { x: 0.5, y: 0.5 },
+      fontSize: 48,
+      fontFamily: "Roboto",
+      textColor: "#333333",
+      isLocked: true // Elemen ini tidak bisa dihapus
+    },
+    {
+      id: 2,
+      label: "JABATAN",
+      textPreview: "Jabatan/Peran",
+      positionPercent: { x: 0.5, y: 0.6 },
+      fontSize: 24,
+      fontFamily: "Roboto",
+      textColor: "#555555"
+    }
+  ]);
+
+  useEffect(() => {
+    textElements.forEach((el) => {
+      if (!elementRefs.current.has(el.id)) {
+        elementRefs.current.set(el.id, createRef());
+      }
+    });
+  }, [textElements]);
 
   // State untuk Pagination & Download
   const [certificates, setCertificates] = useState([]);
@@ -94,11 +118,9 @@ export default function Dashboard() {
   // State untuk Batch Processing
   const [progress, setProgress] = useState(null);
 
-  const nodeRef = useRef(null);
-  const secondaryNodeRef = useRef(null);
   const previewContainerRef = useRef(null);
 
-  // Efek untuk notifikasi
+  // Efek untuk notifikasi dan proteksi halaman
   useEffect(() => {
     if (notification.show) {
       const timer = setTimeout(
@@ -109,14 +131,12 @@ export default function Dashboard() {
     }
   }, [notification]);
 
-  // Efek untuk melindungi halaman
   useEffect(() => {
     if (!loading && !user) {
       router.push("/login");
     }
   }, [user, loading, router]);
 
-  // Fungsi untuk mengambil halaman pertama sertifikat
   const fetchInitialCertificates = useCallback(async () => {
     if (!user) return;
     try {
@@ -134,7 +154,6 @@ export default function Dashboard() {
     }
   }, [user]);
 
-  // Fungsi untuk memuat halaman sertifikat berikutnya
   const handleLoadMore = async () => {
     if (!user || !lastDocId || !hasMore) return;
     setIsLoadingMore(true);
@@ -165,89 +184,185 @@ export default function Dashboard() {
     }
   }, [user, fetchInitialCertificates]);
 
-  // Fungsi Generate dengan Batch Processing (Chunking)
+  const handleCsvFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          if (results.data.length > 0 && results.meta.fields) {
+            setCsvHeaders(results.meta.fields);
+            setCsvData(results.data);
+            setMapping({});
+          } else {
+            setNotification({
+              show: true,
+              message: "File CSV tidak valid atau kosong.",
+              type: "error"
+            });
+          }
+        },
+        error: (err) => {
+          setNotification({
+            show: true,
+            message: `Gagal membaca CSV: ${err.message}`,
+            type: "error"
+          });
+        }
+      });
+    }
+  };
+
+  const handleMappingChange = (label, csvHeader) => {
+    setMapping((prev) => ({ ...prev, [label]: csvHeader }));
+  };
+
+  const handleElementChange = (id, field, value) => {
+    setTextElements((prev) =>
+      prev.map((el) => (el.id === id ? { ...el, [field]: value } : el))
+    );
+  };
+
+  const createDragHandler = (id) => (e, ui) => {
+    const container = previewContainerRef.current;
+    if (!container) return;
+    const { width, height } = container.getBoundingClientRect();
+    const textElementNode = ui.node;
+    const newX = ui.x + textElementNode.offsetWidth / 2;
+    const newY = ui.y + textElementNode.offsetHeight / 2;
+
+    handleElementChange(id, "positionPercent", {
+      x: newX / width,
+      y: newY / height
+    });
+  };
+
+  const handleAddTextElement = () => {
+    const newElement = {
+      id: Date.now(),
+      label: "TEKS_BARU",
+      textPreview: "Teks Baru",
+      positionPercent: { x: 0.5, y: 0.7 },
+      fontSize: 28,
+      fontFamily: "Roboto",
+      textColor: "#333333"
+    };
+    setTextElements((prevElements) => [...prevElements, newElement]);
+  };
+
+  const handleRemoveTextElement = (idToRemove) => {
+    setTextElements((prevElements) =>
+      prevElements.filter((element) => element.id !== idToRemove)
+    );
+  };
+
   const handleGenerate = async () => {
+    console.log("Data being sent to API:", textElements);
+
     if (!templateFile || !user) {
-      const message = !templateFile
-        ? "Pilih file template dulu!"
-        : "Sesi tidak valid.";
-      setNotification({ show: true, message, type: "error" });
-      if (!user) router.push("/login");
+      setNotification({
+        show: true,
+        message: "Pilih template dan pastikan Anda login.",
+        type: "error"
+      });
+      return;
+    }
+
+    let dataToSend = [];
+    let finalMapping = {};
+
+    if (inputMode === "manual") {
+      const namesFromManualInput = manualNames
+        .split(",")
+        .map((name) => name.trim())
+        .filter((name) => name);
+      if (namesFromManualInput.length === 0) {
+        setNotification({
+          show: true,
+          message: "Masukkan setidaknya satu nama peserta.",
+          type: "error"
+        });
+        return;
+      }
+
+      dataToSend = namesFromManualInput.map((name) => {
+        const dataObject = {};
+        // Assign name to the locked element's label
+        const lockedElement = textElements.find((el) => el.isLocked);
+        if (lockedElement) {
+          dataObject[lockedElement.label] = name;
+        }
+
+        // Assign static textPreview for other elements
+        textElements.forEach((el) => {
+          if (!el.isLocked) {
+            dataObject[el.label] = el.textPreview;
+          }
+        });
+        return dataObject;
+      });
+    } else {
+      // Mode CSV
+      dataToSend = csvData;
+      finalMapping = mapping;
+      if (Object.keys(finalMapping).length === 0) {
+        setNotification({
+          show: true,
+          message: "Silakan petakan kolom CSV terlebih dahulu.",
+          type: "error"
+        });
+        return;
+      }
+    }
+
+    if (dataToSend.length === 0) {
+      setNotification({
+        show: true,
+        message: "Tidak ada data untuk diproses.",
+        type: "error"
+      });
       return;
     }
 
     setIsLoading(true);
-    const allNames = names
-      .split(",")
-      .map((n) => n.trim())
-      .filter((n) => n);
-    const allSecondaryTexts = secondaryText
-      .split(",")
-      .map((t) => t.trim())
-      .filter((t) => t);
-    const CHUNK_SIZE = 50;
-    setProgress({ current: 0, total: allNames.length });
+    setProgress({ current: 0, total: dataToSend.length });
 
     try {
       const token = await user.getIdToken();
+      const formData = new FormData();
 
-      for (let i = 0; i < allNames.length; i += CHUNK_SIZE) {
-        const nameChunk = allNames.slice(i, i + CHUNK_SIZE);
-        const secondaryTextChunk = allSecondaryTexts.slice(i, i + CHUNK_SIZE);
+      formData.append("template", templateFile);
+      formData.append("previewWidth", previewSize.width);
+      formData.append(
+        "textElements",
+        JSON.stringify(textElements.map(({ ref, ...rest }) => rest))
+      );
+      formData.append("csvData", JSON.stringify(dataToSend));
+      formData.append(
+        "mapping",
+        inputMode === "manual"
+          ? JSON.stringify({})
+          : JSON.stringify(finalMapping)
+      );
 
-        setProgress({ current: i, total: allNames.length });
-
-        const formData = new FormData();
-        formData.append("template", templateFile);
-        formData.append("previewWidth", previewSize.width);
-
-        formData.append("namesField", nameChunk.join(", "));
-        formData.append("positionXPercent", positionPercent.x);
-        formData.append("positionYPercent", positionPercent.y);
-        formData.append("fontSize", fontSize);
-        formData.append("fontFamily", fontFamily);
-        formData.append("textColor", textColor);
-
-        if (showSecondaryControls && secondaryTextChunk.length > 0) {
-          formData.append("secondaryTextField", secondaryTextChunk.join(", "));
-          formData.append(
-            "secondaryPositionXPercent",
-            secondaryPositionPercent.x
-          );
-          formData.append(
-            "secondaryPositionYPercent",
-            secondaryPositionPercent.y
-          );
-          formData.append("secondaryFontSize", secondaryFontSize);
-          formData.append("secondaryFontFamily", secondaryFontFamily);
-          formData.append("secondaryTextColor", secondaryTextColor);
-        }
-
-        const response = await fetch("/api/generate", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData
-        });
-
-        if (!response.ok) {
-          const result = await response.json();
-          throw new Error(
-            result.message || `Gagal pada batch #${i / CHUNK_SIZE + 1}`
-          );
-        }
-      }
-
-      setProgress({ current: allNames.length, total: allNames.length });
-      setNotification({
-        show: true,
-        message: "Sukses! Semua sertifikat berhasil dibuat.",
-        type: "success"
+      const response = await fetch("/api/generate", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData
       });
 
-      setCertificates([]);
-      setLastDocId(null);
-      setHasMore(true);
-      fetchInitialCertificates();
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.message || "Gagal generate sertifikat");
+      }
+
+      setNotification({
+        show: true,
+        message: "Sukses! Sertifikat sedang dibuat.",
+        type: "success"
+      });
+      await fetchInitialCertificates();
     } catch (error) {
       setNotification({
         show: true,
@@ -260,7 +375,6 @@ export default function Dashboard() {
     }
   };
 
-  // Fungsi Download
   const handleDownloadSingle = async (url, name) => {
     try {
       setNotification({
@@ -280,7 +394,6 @@ export default function Dashboard() {
       });
     }
   };
-
   const handleDownloadAll = async () => {
     if (!user) {
       setNotification({
@@ -321,8 +434,6 @@ export default function Dashboard() {
       if (!response.ok) {
         throw new Error(result.message || "Gagal membuat file ZIP.");
       }
-
-      // Langsung buka URL yang diberikan server. Browser akan otomatis mengunduhnya.
       setNotification({
         show: true,
         message: "Unduhan Anda akan segera dimulai!",
@@ -340,8 +451,6 @@ export default function Dashboard() {
       setIsZipping(false);
     }
   };
-
-  // Fungsi Logout dan handler lainnya
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -350,7 +459,7 @@ export default function Dashboard() {
       console.error("Error signing out:", error);
     }
   };
-  const handlecreatedesign = async () => {
+  const handleCreateDesign = async () => {
     router.push("/create-design");
   };
   const handleFileChange = (e) => {
@@ -359,23 +468,8 @@ export default function Dashboard() {
       setTemplateFile(file);
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(URL.createObjectURL(file));
-      setPositionPercent({ x: 0.5, y: 0.5 });
-      setSecondaryPositionPercent({ x: 0.5, y: 0.6 });
     }
   };
-
-  const createDragHandler = (setter) => (e, ui) => {
-    const container = previewContainerRef.current;
-    if (!container) return;
-    const { width, height } = container.getBoundingClientRect();
-    const textElement = ui.node;
-    const newX = ui.x + textElement.offsetWidth / 2;
-    const newY = ui.y + textElement.offsetHeight / 2;
-    setter({ x: newX / width, y: newY / height });
-  };
-
-  const handlePrimaryDrag = createDragHandler(setPositionPercent);
-  const handleSecondaryDrag = createDragHandler(setSecondaryPositionPercent);
 
   useEffect(() => {
     const updatePreviewSize = () => {
@@ -390,24 +484,6 @@ export default function Dashboard() {
     return () => window.removeEventListener("resize", updatePreviewSize);
   }, [previewUrl]);
 
-  useEffect(() => {
-    const url = previewUrl;
-    return () => {
-      if (url) URL.revokeObjectURL(url);
-    };
-  }, [previewUrl]);
-
-  const calculatePixelPosition = (pos, ref) => ({
-    x: previewSize.width * pos.x - (ref.current?.offsetWidth / 2 || 0),
-    y: previewSize.height * pos.y - (ref.current?.offsetHeight / 2 || 0)
-  });
-
-  const pixelPosition = calculatePixelPosition(positionPercent, nodeRef);
-  const secondaryPixelPosition = calculatePixelPosition(
-    secondaryPositionPercent,
-    secondaryNodeRef
-  );
-
   if (loading || !user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-blue-50">
@@ -421,15 +497,12 @@ export default function Dashboard() {
       <Notification {...notification} />
       <header className="w-full bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40">
         <div className="container mx-auto flex justify-between items-center px-6 py-3">
-          {/* Sisi Kiri: Judul */}
           <h1 className="text-xl font-bold text-indigo-700 tracking-tight">
             SertiGen Dashboard
           </h1>
-
-          {/* SISI KANAN: Kumpulan Aksi (Tombol & User Info) */}
           <div className="flex items-center gap-4">
             <button
-              onClick={handlecreatedesign} // Pastikan nama fungsi ini sudah benar
+              onClick={handleCreateDesign}
               className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg shadow-sm hover:bg-indigo-700 flex items-center gap-2 transition-colors"
             >
               <svg
@@ -446,10 +519,7 @@ export default function Dashboard() {
               </svg>
               <span>Buat Desain Baru</span>
             </button>
-
-            {/* Pembatas Visual */}
             <div className="h-6 w-px bg-slate-200 hidden md:block"></div>
-
             <div className="hidden md:flex items-center gap-4">
               <p className="text-sm text-slate-500">
                 Login sebagai:{" "}
@@ -473,6 +543,7 @@ export default function Dashboard() {
             <h2 className="text-3xl font-bold text-center text-blue-800">
               Kontrol Generator
             </h2>
+
             <div>
               <label className="block text-sm font-semibold text-blue-700 mb-2">
                 1. Unggah Template
@@ -498,82 +569,184 @@ export default function Dashboard() {
 
             <div className="space-y-4 pt-4 border-t border-blue-200">
               <h3 className="text-lg font-medium text-blue-800">
-                Teks Utama (Nama Peserta)
+                2. Input Data Peserta
               </h3>
-              <textarea
-                id="names"
-                rows={3}
-                className="w-full p-2 border rounded-md bg-blue-50 border-blue-300 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Contoh: Budi Santoso, Citra Lestari, Rian Adriansyah"
-                value={names}
-                onChange={(e) => setNames(e.target.value)}
-              />
-
-              {/* KETERANGAN YANG LEBIH DESKRIPTIF */}
-              <p className="text-xs text-slate-500 mt-1">
-                * Masukkan satu atau beberapa nama, pisahkan dengan koma (,).
-              </p>
-
-              <div>
-                <label
-                  htmlFor="fontSize"
-                  className="block text-sm font-medium text-blue-700"
+              <div className="flex bg-blue-100 rounded-lg p-1">
+                <button
+                  onClick={() => setInputMode("manual")}
+                  className={`w-full p-2 text-sm font-semibold rounded-md transition-colors ${
+                    inputMode === "manual"
+                      ? "bg-white text-blue-700 shadow"
+                      : "text-blue-600"
+                  }`}
                 >
-                  Ukuran Font: <span className="font-bold">{fontSize}px</span>
-                </label>
-                <input
-                  id="fontSize"
-                  type="range"
-                  min="12"
-                  max="120"
-                  value={fontSize}
-                  onChange={(e) => setFontSize(e.target.value)}
-                  className="w-full"
-                />
+                  Input Manual
+                </button>
+                <button
+                  onClick={() => setInputMode("csv")}
+                  className={`w-full p-2 text-sm font-semibold rounded-md transition-colors ${
+                    inputMode === "csv"
+                      ? "bg-white text-blue-700 shadow"
+                      : "text-blue-600"
+                  }`}
+                >
+                  Unggah File CSV
+                </button>
               </div>
+
+              {inputMode === "manual" ? (
+                <div>
+                  <label className="block text-sm font-semibold text-blue-700 mb-2">
+                    Nama Peserta (pisahkan dengan koma)
+                  </label>
+                  <textarea
+                    rows={3}
+                    className="w-full p-2 border rounded-md bg-blue-50 border-blue-300"
+                    placeholder="Contoh: Budi Santoso, Citra Lestari"
+                    value={manualNames}
+                    onChange={(e) => setManualNames(e.target.value)}
+                  />
+                </div>
+              ) : (
+                <div>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleCsvFileChange}
+                    className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    * Pastikan file CSV Anda memiliki header.
+                  </p>
+                </div>
+              )}
             </div>
 
-            <div className="pt-4 border-t border-blue-200">
-              <button
-                onClick={() => setShowSecondaryControls(!showSecondaryControls)}
-                className="text-sm text-blue-600 font-semibold hover:underline"
-              >
-                {showSecondaryControls
-                  ? "Hilangkan Teks Kedua"
-                  : "Tambah Baris Teks Kedua (misal: Jabatan)"}
-              </button>
-              {showSecondaryControls && (
-                <div className="mt-4 space-y-4 p-4 bg-blue-100 rounded-lg">
-                  <h3 className="text-lg font-medium text-blue-800">
-                    Teks Kedua
-                  </h3>
-                  <textarea
-                    id="secondaryText"
-                    placeholder="Contoh: Peserta Webinar, Juara 1"
-                    rows={2}
-                    className="w-full p-2 border rounded-md bg-blue-50 border-blue-300 focus:ring-blue-500 focus:border-blue-500"
-                    value={secondaryText}
-                    onChange={(e) => setSecondaryText(e.target.value)}
-                  />
+            {inputMode === "csv" && csvHeaders.length > 0 && (
+              <div className="space-y-4 pt-4 border-t border-blue-200">
+                <h3 className="text-lg font-medium text-blue-800">
+                  3. Petakan Kolom
+                </h3>
+                {textElements.map((element) => (
+                  <div
+                    key={element.id}
+                    className="grid grid-cols-2 items-center gap-4"
+                  >
+                    <label className="font-medium text-sm">
+                      Elemen: {element.label}
+                    </label>
+                    <select
+                      value={mapping[element.label] || ""}
+                      onChange={(e) =>
+                        handleMappingChange(element.label, e.target.value)
+                      }
+                      className="w-full p-2 border rounded-md bg-white border-blue-300"
+                    >
+                      <option value="" disabled>
+                        Pilih Kolom CSV
+                      </option>
+                      {csvHeaders.map((header) => (
+                        <option key={header} value={header}>
+                          {header}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="space-y-4 pt-4 border-t border-blue-200">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-medium text-blue-800">
+                  {inputMode === "csv" ? "4." : "3."} Kustomisasi Elemen
+                </h3>
+                <button
+                  onClick={handleAddTextElement}
+                  className="px-3 py-1 text-sm font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
+                >
+                  + Tambah
+                </button>
+              </div>
+              {textElements.map((element) => (
+                <div
+                  key={element.id}
+                  className="p-4 bg-blue-100 rounded-lg space-y-3"
+                >
+                  <div className="flex justify-between items-center">
+                    <input
+                      type="text"
+                      value={element.label}
+                      onChange={(e) =>
+                        handleElementChange(
+                          element.id,
+                          "label",
+                          e.target.value.toUpperCase().replace(/\s+/g, "_")
+                        )
+                      }
+                      className="font-semibold text-blue-900 bg-transparent border-b border-blue-300 focus:outline-none"
+                    />
+                    {!element.isLocked && (
+                      <button
+                        onClick={() => handleRemoveTextElement(element.id)}
+                        className="text-sm font-semibold text-red-500 hover:text-red-700"
+                      >
+                        Hapus
+                      </button>
+                    )}
+                  </div>
+
+                  {!element.isLocked && (
+                    <div>
+                      <label className="text-xs font-medium text-blue-700">
+                        Teks Contoh di Preview
+                      </label>
+                      <input
+                        type="text"
+                        value={element.textPreview}
+                        onChange={(e) =>
+                          handleElementChange(
+                            element.id,
+                            "textPreview",
+                            e.target.value
+                          )
+                        }
+                        className="w-full text-sm p-1 mt-1 border rounded-md bg-white border-blue-300"
+                      />
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-sm font-medium text-blue-700">
                       Ukuran Font:{" "}
-                      <span className="font-bold">{secondaryFontSize}px</span>
+                      <span className="font-bold">{element.fontSize}px</span>
                     </label>
                     <input
                       type="range"
                       min="10"
-                      max="100"
-                      value={secondaryFontSize}
-                      onChange={(e) => setSecondaryFontSize(e.target.value)}
+                      max="120"
+                      value={element.fontSize}
+                      onChange={(e) =>
+                        handleElementChange(
+                          element.id,
+                          "fontSize",
+                          parseInt(e.target.value, 10)
+                        )
+                      }
                       className="w-full"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-4">
                     <select
-                      value={secondaryFontFamily}
-                      onChange={(e) => setSecondaryFontFamily(e.target.value)}
-                      className="w-full p-2 border rounded-md bg-white border-blue-300 focus:ring-blue-500 focus:border-blue-500"
+                      value={element.fontFamily}
+                      onChange={(e) =>
+                        handleElementChange(
+                          element.id,
+                          "fontFamily",
+                          e.target.value
+                        )
+                      }
+                      className="w-full p-2 border rounded-md bg-white border-blue-300"
                     >
                       <option>Roboto</option>
                       <option>Montserrat</option>
@@ -582,24 +755,29 @@ export default function Dashboard() {
                       <option>Lora</option>
                       <option>Pacifico</option>
                       <option>Caveat</option>
-                      <option>Arial</option>
                     </select>
                     <input
                       type="color"
-                      value={secondaryTextColor}
-                      onChange={(e) => setSecondaryTextColor(e.target.value)}
-                      className="w-full h-10 p-1 border rounded-md bg-white border-blue-300"
+                      value={element.textColor}
+                      onChange={(e) =>
+                        handleElementChange(
+                          element.id,
+                          "textColor",
+                          e.target.value
+                        )
+                      }
+                      className="w-16 h-10 p-1 border rounded-md bg-white border-blue-300"
                     />
                   </div>
                 </div>
-              )}
+              ))}
             </div>
 
             <div className="pt-4 border-t border-blue-200">
               <button
                 onClick={handleGenerate}
                 disabled={isLoading || !templateFile}
-                className="w-full flex justify-center p-3 font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
+                className="w-full flex justify-center p-3 font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-blue-400"
               >
                 {isLoading ? <Spinner /> : "Generate Sertifikat"}
               </button>
@@ -626,64 +804,56 @@ export default function Dashboard() {
             {previewUrl ? (
               <div
                 ref={previewContainerRef}
-                className="relative w-full max-w-[500px] aspect-video overflow-hidden border rounded-lg border-blue-200"
+                className="relative w-full max-w-[500px] aspect-video overflow-hidden border rounded-lg"
               >
-                <img
+                <Image
                   src={previewUrl}
                   alt="Template Preview"
-                  className="w-full h-full object-contain"
+                  fill
+                  style={{ objectFit: "contain" }}
                 />
-                <Draggable
-                  nodeRef={nodeRef}
-                  bounds="parent"
-                  position={pixelPosition}
-                  onStop={handlePrimaryDrag}
-                >
-                  <div
-                    ref={nodeRef}
-                    className="cursor-move absolute p-2"
-                    style={{ top: 0, left: 0, whiteSpace: "nowrap" }}
-                  >
-                    <span
-                      style={{
-                        color: textColor,
-                        fontSize: `${fontSize}px`,
-                        fontFamily: fontFamily,
-                        fontWeight: "bold"
-                      }}
+                {textElements.map((element) => {
+                  const nodeRef = elementRefs.current.get(element.id);
+                  if (!nodeRef) return null;
+
+                  const pixelPosition = {
+                    x:
+                      previewSize.width * element.positionPercent.x -
+                      (nodeRef.current?.offsetWidth / 2 || 0),
+                    y:
+                      previewSize.height * element.positionPercent.y -
+                      (nodeRef.current?.offsetHeight / 2 || 0)
+                  };
+
+                  return (
+                    <Draggable
+                      key={element.id}
+                      nodeRef={nodeRef}
+                      bounds="parent"
+                      position={pixelPosition}
+                      onStop={createDragHandler(element.id)}
                     >
-                      Nama Peserta
-                    </span>
-                  </div>
-                </Draggable>
-                {showSecondaryControls && (
-                  <Draggable
-                    nodeRef={secondaryNodeRef}
-                    bounds="parent"
-                    position={secondaryPixelPosition}
-                    onStop={handleSecondaryDrag}
-                  >
-                    <div
-                      ref={secondaryNodeRef}
-                      className="cursor-move absolute p-2"
-                      style={{ top: 0, left: 0, whiteSpace: "nowrap" }}
-                    >
-                      <span
-                        style={{
-                          color: secondaryTextColor,
-                          fontSize: `${secondaryFontSize}px`,
-                          fontFamily: secondaryFontFamily,
-                          fontWeight: "bold"
-                        }}
+                      <div
+                        ref={nodeRef}
+                        className="cursor-move absolute p-2"
+                        style={{ top: 0, left: 0, whiteSpace: "nowrap" }}
                       >
-                        Teks Kedua
-                      </span>
-                    </div>
-                  </Draggable>
-                )}
+                        <span
+                          style={{
+                            color: element.textColor,
+                            fontSize: `${element.fontSize}px`,
+                            fontFamily: element.fontFamily
+                          }}
+                        >
+                          {element.textPreview}
+                        </span>
+                      </div>
+                    </Draggable>
+                  );
+                })}
               </div>
             ) : (
-              <div className="w-full max-w-[500px] aspect-video flex justify-center items-center border-2 border-dashed rounded-lg border-blue-300 bg-blue-50">
+              <div className="w-full max-w-[500px] aspect-video flex justify-center items-center border-2 border-dashed rounded-lg bg-blue-50">
                 <p className="text-blue-700">Pratinjau Template</p>
               </div>
             )}
@@ -705,7 +875,6 @@ export default function Dashboard() {
                 {isZipping ? "Zipping..." : "Download Semua"}
               </button>
             </div>
-
             {certificates.length > 0 ? (
               <div className="space-y-4">
                 {certificates.map((cert) => (
@@ -745,7 +914,6 @@ export default function Dashboard() {
             ) : (
               <p className="text-blue-700">Belum ada sertifikat yang dibuat.</p>
             )}
-
             {hasMore && (
               <div className="text-center mt-8">
                 <button
