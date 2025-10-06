@@ -350,7 +350,9 @@ export default function Dashboard() {
       console.error("Error signing out:", error);
     }
   };
-
+  const handlecreatedesign = async () => {
+    router.push("/create-design");
+  };
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -417,21 +419,51 @@ export default function Dashboard() {
   return (
     <>
       <Notification {...notification} />
-      <header className="bg-white shadow-md border-b border-blue-200">
-        <div className="w-full max-w-7xl mx-auto p-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-blue-700">
+      <header className="w-full bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40">
+        <div className="container mx-auto flex justify-between items-center px-6 py-3">
+          {/* Sisi Kiri: Judul */}
+          <h1 className="text-xl font-bold text-indigo-700 tracking-tight">
             SertiGen Dashboard
           </h1>
+
+          {/* SISI KANAN: Kumpulan Aksi (Tombol & User Info) */}
           <div className="flex items-center gap-4">
-            <p className="text-sm text-blue-900 hidden sm:block">
-              Login sebagai: <strong>{user.email}</strong>
-            </p>
             <button
-              onClick={handleLogout}
-              className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-md hover:bg-red-700"
+              onClick={handlecreatedesign} // Pastikan nama fungsi ini sudah benar
+              className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg shadow-sm hover:bg-indigo-700 flex items-center gap-2 transition-colors"
             >
-              Logout
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <span>Buat Desain Baru</span>
             </button>
+
+            {/* Pembatas Visual */}
+            <div className="h-6 w-px bg-slate-200 hidden md:block"></div>
+
+            <div className="hidden md:flex items-center gap-4">
+              <p className="text-sm text-slate-500">
+                Login sebagai:{" "}
+                <strong className="font-medium text-slate-700">
+                  {user.email}
+                </strong>
+              </p>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 text-sm font-medium text-red-600 bg-red-100 rounded-lg hover:bg-red-200 hover:text-red-700 transition-colors"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -472,9 +504,16 @@ export default function Dashboard() {
                 id="names"
                 rows={3}
                 className="w-full p-2 border rounded-md bg-blue-50 border-blue-300 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Contoh: Budi Santoso, Citra Lestari, Rian Adriansyah"
                 value={names}
                 onChange={(e) => setNames(e.target.value)}
               />
+
+              {/* KETERANGAN YANG LEBIH DESKRIPTIF */}
+              <p className="text-xs text-slate-500 mt-1">
+                * Masukkan satu atau beberapa nama, pisahkan dengan koma (,).
+              </p>
+
               <div>
                 <label
                   htmlFor="fontSize"
@@ -490,28 +529,6 @@ export default function Dashboard() {
                   value={fontSize}
                   onChange={(e) => setFontSize(e.target.value)}
                   className="w-full"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <select
-                  value={fontFamily}
-                  onChange={(e) => setFontFamily(e.target.value)}
-                  className="w-full p-2 border rounded-md bg-white border-blue-300 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option>Roboto</option>
-                  <option>Montserrat</option>
-                  <option>Playfair Display</option>
-                  <option>Poppins</option>
-                  <option>Lora</option>
-                  <option>Pacifico</option>
-                  <option>Caveat</option>
-                  <option>Arial</option>
-                </select>
-                <input
-                  type="color"
-                  value={textColor}
-                  onChange={(e) => setTextColor(e.target.value)}
-                  className="w-full h-10 p-1 border rounded-md bg-white border-blue-300"
                 />
               </div>
             </div>

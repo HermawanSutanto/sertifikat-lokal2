@@ -1,6 +1,8 @@
+"use client"; // BARU: Mengubah ini menjadi Komponen Klien
 import Link from "next/link";
 import Image from "next/image"; // <-- TAMBAHKAN BARIS INI
-
+import { useAuth } from "../context/AuthContext"; // BARU: Impor hook autentikasi
+import { useRouter } from "next/navigation";
 // Komponen ikon untuk bagian fitur
 const FeatureIcon = ({ children }) => (
   <div className="flex items-center justify-center h-14 w-14 rounded-2xl bg-gradient-to-tr from-indigo-500 to-indigo-600 text-white shadow-md">
@@ -8,34 +10,17 @@ const FeatureIcon = ({ children }) => (
   </div>
 );
 
-export const metadata = {
-  title: "SertiGen: Generator Sertifikat Online Cepat & Mudah",
-  description:
-    "Buat ribuan sertifikat personal secara otomatis. Cukup unggah template, masukkan daftar nama, dan unduh sertifikat berkualitas tinggi dalam hitungan menit.",
-  keywords:
-    "generator sertifikat, buat sertifikat online, aplikasi sertifikat, sertifikat massal, otomatisasi sertifikat, SertiGen",
-  openGraph: {
-    title: "SertiGen: Generator Sertifikat Online Cepat & Mudah",
-    description: "Buat ribuan sertifikat personal secara otomatis dan cepat.",
-    url: "https://sertifikat-lokal2.vercel.app/", // Ganti dengan URL domain Anda
-    siteName: "SertiGen",
-    images: [
-      {
-        url: "/og-image.png", // Pastikan gambar ini ada di folder /public
-        width: 1200,
-        height: 630
-      }
-    ],
-    locale: "id_ID",
-    type: "website"
-  },
-  robots: {
-    index: true,
-    follow: true
-  }
-};
-
 export default function LandingPage() {
+  const { user, logout } = useAuth();
+  const router = useRouter();
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push("/"); // Arahkan kembali ke halaman utama setelah logout
+    } catch (error) {
+      console.error("Gagal melakukan logout:", error);
+    }
+  };
   return (
     <div className="flex flex-col min-h-screen bg-white text-slate-800">
       {/* Header */}
@@ -48,13 +33,15 @@ export default function LandingPage() {
             SertiGen
           </Link>
 
-          {/* Navigasi Utama (disembunyikan di HP) */}
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-700">
-            <Link href="#features" className="hover:text-indigo-600 transition">
+            <Link
+              href="/#features"
+              className="hover:text-indigo-600 transition"
+            >
               Fitur
             </Link>
             <Link
-              href="#how-it-works"
+              href="/#how-it-works"
               className="hover:text-indigo-600 transition"
             >
               Cara Kerja
@@ -64,20 +51,41 @@ export default function LandingPage() {
             </Link>
           </nav>
 
-          {/* Navigasi Aksi */}
+          {/* Navigasi Aksi (DINAMIS BERDASARKAN STATUS LOGIN) */}
           <div className="flex items-center gap-2">
-            <Link
-              href="/login"
-              className="px-5 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100 transition"
-            >
-              Login
-            </Link>
-            <Link
-              href="/register"
-              className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg shadow-md hover:bg-indigo-700 transition"
-            >
-              Daftar Gratis
-            </Link>
+            {user ? (
+              // Tampilan JIKA PENGGUNA SUDAH LOGIN
+              <>
+                <Link
+                  href="/dashboard"
+                  className="px-5 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100 transition"
+                >
+                  Dashboard
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg shadow-md hover:bg-indigo-700 transition"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              // Tampilan JIKA PENGGUNA BELUM LOGIN (Tamu)
+              <>
+                <Link
+                  href="/login"
+                  className="px-5 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100 transition"
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/register"
+                  className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg shadow-md hover:bg-indigo-700 transition"
+                >
+                  Daftar Gratis
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>

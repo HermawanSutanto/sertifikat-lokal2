@@ -15,11 +15,14 @@
     "firebase-admin": "^13.5.0",
     "gray-matter": "^4.0.3",
     "jszip": "^3.10.1",
+    "konva": "^10.0.2",
     "next": "15.5.4",
     "next-mdx-remote": "^5.0.0",
+    "papaparse": "^5.5.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-draggable": "^4.5.0",
+    "react-konva": "^19.0.10",
     "sharp": "^0.34.4"
   },
   "devDependencies": {

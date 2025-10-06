@@ -5,8 +5,30 @@ import { AuthContextProvider } from "../context/AuthContext"; // <-- IMPORT
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "Certificate Generator",
-  description: "Generate certificates easily"
+  title: "SertiGen: Generator Sertifikat Online Cepat & Mudah",
+  description:
+    "Buat ribuan sertifikat personal secara otomatis. Cukup unggah template, masukkan daftar nama, dan unduh sertifikat berkualitas tinggi dalam hitungan menit.",
+  keywords:
+    "generator sertifikat, buat sertifikat online, aplikasi sertifikat, sertifikat massal, otomatisasi sertifikat, SertiGen",
+  openGraph: {
+    title: "SertiGen: Generator Sertifikat Online Cepat & Mudah",
+    description: "Buat ribuan sertifikat personal secara otomatis dan cepat.",
+    url: "https://sertifikat-lokal2.vercel.app/", // Ganti dengan URL domain Anda
+    siteName: "SertiGen",
+    images: [
+      {
+        url: "/og-image.png", // Pastikan gambar ini ada di folder /public
+        width: 1200,
+        height: 630
+      }
+    ],
+    locale: "id_ID",
+    type: "website"
+  },
+  robots: {
+    index: true,
+    follow: true
+  }
 };
 
 export default function RootLayout({ children }) {
