@@ -9,6 +9,12 @@ import {
 import sharp from "sharp";
 import { NextResponse } from "next/server";
 import admin from "../../../lib/firebaseAdmin";
+import { runWithConcurrencyLimit } from "../../../lib/concurrency";
+
+// Batas jumlah proses generate gambar & upload yang berjalan bersamaan.
+// Mencegah CPU/memory spike dan rate-limit ketika CSV berisi ratusan baris.
+const GENERATE_CONCURRENCY = 5;
+const UPLOAD_CONCURRENCY = 5;
 
 // Helper function untuk mengambil dan cache font (Tidak ada perubahan)
 const fontCache = new Map();
@@ -45,43 +51,50 @@ async function getFontBase64(fontFamily) {
   }
 }
 
-// Helper function untuk membuat layer SVG (Ditambahkan sanitasi teks)
-// Helper function untuk membuat layer SVG (Dengan Tipe Font yang Benar)
-function generateSvgLayer({
-  text,
-  textColor,
-  fontSize,
-  fontFamily,
-  fontBase64,
-  positionX,
-  positionY,
-  imageWidth,
-  imageHeight
-}) {
-  const sanitizedText = String(text)
+function sanitizeSvgText(text) {
+  return String(text)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
 
-  const svgText = `
-    <svg width="${imageWidth}" height="${imageHeight}" xmlns="http://www.w3.org/2000/svg">
-      <style>
+// Membuat SATU layer SVG yang berisi semua elemen teks untuk sebuah sertifikat,
+// alih-alih satu layer SVG terpisah per elemen teks. Ini menghindari:
+// - embedding base64 font berkali-kali (dulu: N kali per baris data, N = jumlah teks)
+// - N kali parsing/render SVG oleh sharp/librsvg per sertifikat (sekarang cukup 1 kali)
+function generateCombinedSvgLayer({ items, imageWidth, imageHeight }) {
+  // Hanya sertakan @font-face untuk font yang benar-benar dipakai di sertifikat ini
+  const uniqueFonts = [...new Set(items.map((i) => i.fontFamily))];
+  const fontFaces = uniqueFonts
+    .map(
+      (fontFamily) => `
         @font-face {
           font-family: "${fontFamily}";
-          src: url(data:font/woff2;base64,${fontBase64});
-        }
-        .title {
-          fill: ${textColor};
-          font-size: ${fontSize}px;
-          font-weight: bold;
-          font-family: "${fontFamily}", sans-serif;
-        }
-      </style>
-      <text x="${positionX}" y="${positionY}" text-anchor="middle" dominant-baseline="middle" class="title">${sanitizedText}</text>
+          src: url(data:font/woff2;base64,${
+            items.find((i) => i.fontFamily === fontFamily).fontBase64
+          });
+        }`
+    )
+    .join("\n");
+
+  const textNodes = items
+    .map(
+      ({ text, textColor, fontSize, fontFamily, positionX, positionY }) => `
+      <text x="${positionX}" y="${positionY}" text-anchor="middle" dominant-baseline="middle"
+        style="fill:${textColor}; font-size:${fontSize}px; font-weight:bold; font-family:'${fontFamily}', sans-serif;">
+        ${sanitizeSvgText(text)}
+      </text>`
+    )
+    .join("\n");
+
+  const svg = `
+    <svg width="${imageWidth}" height="${imageHeight}" xmlns="http://www.w3.org/2000/svg">
+      <style>${fontFaces}</style>
+      ${textNodes}
     </svg>`;
-  return Buffer.from(svgText);
+  return Buffer.from(svg);
 }
 
 export async function POST(req) {
@@ -133,10 +146,12 @@ export async function POST(req) {
         .toBuffer();
     }
 
-    const metadata = await sharp(templateFileBuffer).metadata();
+    // Satu instance sharp dipakai untuk membaca metadata sekaligus sebagai
+    // basis composite (sebelumnya sharp() dipanggil 2x untuk buffer yang sama).
+    const baseImage = sharp(templateFileBuffer);
+    const metadata = await baseImage.metadata();
     const imageWidth = metadata.width;
     const imageHeight = metadata.height;
-    const baseImage = sharp(templateFileBuffer);
     const scaleFactor = imageWidth / previewWidth;
 
     // Cache semua font yang dibutuhkan secara paralel untuk efisiensi
@@ -148,75 +163,103 @@ export async function POST(req) {
     );
 
     // 4. Proses Generate Gambar secara Dinamis
-    const generatedDataPromises = csvData.map(async (row) => {
-      const compositeLayers = [];
-      const primaryIdentifierLabel =
-        textElements.find((el) => el.isLocked)?.label || textElements[0].label;
-      const primaryIdentifier = isManualMode
-        ? row[primaryIdentifierLabel]
-        : row[mapping[primaryIdentifierLabel]] || `sertifikat-${Date.now()}`;
+    // Dibatasi dengan concurrency limit (bukan Promise.all polos) agar CSV
+    // berisi ratusan/ribuan baris tidak memicu ratusan operasi sharp composite
+    // berjalan bersamaan (risiko OOM & timeout di serverless).
+    const allGeneratedData = await runWithConcurrencyLimit(
+      csvData,
+      GENERATE_CONCURRENCY,
+      async (row) => {
+        const primaryIdentifierLabel =
+          textElements.find((el) => el.isLocked)?.label ||
+          textElements[0].label;
+        const primaryIdentifier = isManualMode
+          ? row[primaryIdentifierLabel]
+          : row[mapping[primaryIdentifierLabel]] || `sertifikat-${Date.now()}`;
 
-      for (const element of textElements) {
-        const text = isManualMode
-          ? row[element.label]
-          : row[mapping[element.label]];
+        const svgItems = [];
+        for (const element of textElements) {
+          const text = isManualMode
+            ? row[element.label]
+            : row[mapping[element.label]];
 
-        if (text) {
+          if (!text) continue;
+
           const fontBase64 = fontCache.get(element.fontFamily);
-
           if (!fontBase64) {
             console.error(
               `ERROR: Font base64 for ${element.fontFamily} not found in cache. Skipping layer.`
             );
-            continue; // Langsung lanjut ke elemen berikutnya jika font tidak ada
+            continue;
           }
 
-          const layer = generateSvgLayer({
-            text: text,
+          svgItems.push({
+            text,
             textColor: element.textColor,
             fontSize: Math.round(element.fontSize * scaleFactor),
             fontFamily: element.fontFamily,
-            fontBase64: fontBase64,
+            fontBase64,
             positionX: imageWidth * element.positionPercent.x,
-            positionY: imageHeight * element.positionPercent.y,
-            imageWidth,
-            imageHeight
+            positionY: imageHeight * element.positionPercent.y
           });
-          compositeLayers.push({ input: layer, top: 0, left: 0 });
         }
+
+        // Satu layer SVG gabungan per sertifikat, bukan satu layer per elemen teks.
+        const compositeLayers = svgItems.length
+          ? [
+              {
+                input: generateCombinedSvgLayer({
+                  items: svgItems,
+                  imageWidth,
+                  imageHeight
+                }),
+                top: 0,
+                left: 0
+              }
+            ]
+          : [];
+
+        const generatedCertBuffer = await baseImage
+          .clone()
+          .composite(compositeLayers)
+          .jpeg({ quality: 85 })
+          .toBuffer();
+
+        return {
+          name: primaryIdentifier,
+          buffer: generatedCertBuffer,
+          rowData: row
+        };
       }
-      const generatedCertBuffer = await baseImage
-        .clone()
-        .composite(compositeLayers)
-        .jpeg({ quality: 85 })
-        .toBuffer();
-      return {
-        name: primaryIdentifier,
-        buffer: generatedCertBuffer,
-        rowData: row
-      };
-    });
+    );
 
-    const allGeneratedData = await Promise.all(generatedDataPromises);
+    // 5. Upload ke Supabase, juga dibatasi concurrency-nya agar tidak
+    // membuka ratusan koneksi upload paralel sekaligus.
+    const allUploadedCerts = await runWithConcurrencyLimit(
+      allGeneratedData,
+      UPLOAD_CONCURRENCY,
+      async (data) => {
+        const certPath = `sertifikat-${String(data.name).replace(
+          /\s+/g,
+          "-"
+        )}-${Date.now()}.jpeg`;
+        const { error: uploadError } = await supabase.storage
+          .from("generated-certificates")
+          .upload(certPath, data.buffer, { contentType: "image/jpeg" });
 
-    // 5. Upload ke Supabase (Tidak ada perubahan signifikan)
-    const uploadPromises = allGeneratedData.map(async (data) => {
-      const certPath = `sertifikat-${String(data.name).replace(
-        /\s+/g,
-        "-"
-      )}-${Date.now()}.jpeg`;
-      await supabase.storage
-        .from("generated-certificates")
-        .upload(certPath, data.buffer, { contentType: "image/jpeg" });
-      const {
-        data: { publicUrl }
-      } = supabase.storage
-        .from("generated-certificates")
-        .getPublicUrl(certPath);
-      return { name: data.name, url: publicUrl, rowData: data.rowData };
-    });
+        if (uploadError) {
+          console.error(`Gagal upload sertifikat ${data.name}:`, uploadError);
+          return null;
+        }
 
-    const allUploadedCerts = await Promise.all(uploadPromises);
+        const {
+          data: { publicUrl }
+        } = supabase.storage
+          .from("generated-certificates")
+          .getPublicUrl(certPath);
+        return { name: data.name, url: publicUrl, rowData: data.rowData };
+      }
+    ).then((results) => results.filter(Boolean));
 
     // 6. Simpan Metadata yang lebih terstruktur ke Firestore
     const batch = writeBatch(db);
