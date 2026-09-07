@@ -3,9 +3,23 @@
 import { NextResponse } from "next/server";
 import admin from "../../../lib/firebaseAdmin";
 import { db } from "../../../lib/firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  limit,
+  getDocs
+} from "firebase/firestore";
 import { supabase } from "../../../lib/supabase";
 import JSZip from "jszip";
+import { runWithConcurrencyLimit } from "../../../lib/concurrency";
+
+// Batas jumlah download paralel dari Supabase Storage, dan batas jumlah
+// sertifikat per permintaan ZIP agar request tidak timeout / OOM saat
+// pengguna sudah memiliki ratusan/ribuan sertifikat.
+const DOWNLOAD_CONCURRENCY = 5;
+const MAX_CERTIFICATES_PER_ZIP = 300;
 
 export async function POST(req) {
   try {
@@ -28,9 +42,14 @@ export async function POST(req) {
       );
     }
 
-    // 2. Ambil Semua Data Sertifikat Pengguna dari Firestore
+    // 2. Ambil Data Sertifikat Pengguna dari Firestore (dibatasi jumlahnya)
     const certificatesRef = collection(db, "sertifikat_terbuat");
-    const q = query(certificatesRef, where("userId", "==", uid));
+    const q = query(
+      certificatesRef,
+      where("userId", "==", uid),
+      orderBy("dibuatPada", "desc"),
+      limit(MAX_CERTIFICATES_PER_ZIP)
+    );
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
@@ -42,31 +61,36 @@ export async function POST(req) {
 
     const certificateData = querySnapshot.docs.map((doc) => doc.data());
 
-    // 3. Unduh Semua File dari Supabase & Buat ZIP di Memori Server
+    // 3. Unduh File dari Supabase & Buat ZIP di Memori Server.
+    // Download dibatasi concurrency-nya (bukan Promise.all polos) supaya
+    // tidak membuka ratusan koneksi download sekaligus dan membebani memori
+    // dengan menyimpan semua arrayBuffer di RAM secara bersamaan.
     const zip = new JSZip();
 
-    const downloadPromises = certificateData.map(async (cert) => {
-      // Ekstrak path file dari URL
-      const url = new URL(cert.urlSertifikat);
-      const filePath = url.pathname.split("/generated-certificates/")[1];
+    await runWithConcurrencyLimit(
+      certificateData,
+      DOWNLOAD_CONCURRENCY,
+      async (cert) => {
+        // Ekstrak path file dari URL
+        const url = new URL(cert.urlSertifikat);
+        const filePath = url.pathname.split("/generated-certificates/")[1];
 
-      const { data, error } = await supabase.storage
-        .from("generated-certificates")
-        .download(decodeURIComponent(filePath));
+        const { data, error } = await supabase.storage
+          .from("generated-certificates")
+          .download(decodeURIComponent(filePath));
 
-      if (error) {
-        console.error(`Gagal mengunduh file ${filePath}:`, error);
-        return; // Lewati file yang gagal
+        if (error) {
+          console.error(`Gagal mengunduh file ${filePath}:`, error);
+          return; // Lewati file yang gagal
+        }
+
+        const fileName = `sertifikat-${cert.namaPeserta.replace(
+          /\s+/g,
+          "-"
+        )}.jpeg`;
+        zip.file(fileName, await data.arrayBuffer());
       }
-
-      const fileName = `sertifikat-${cert.namaPeserta.replace(
-        /\s+/g,
-        "-"
-      )}.jpeg`;
-      zip.file(fileName, await data.arrayBuffer());
-    });
-
-    await Promise.all(downloadPromises);
+    );
 
     // 4. Generate Buffer ZIP dan Unggah ke Supabase
     const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
