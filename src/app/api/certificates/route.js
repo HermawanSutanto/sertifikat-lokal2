@@ -7,8 +7,7 @@ import {
   orderBy,
   limit,
   startAfter,
-  doc,
-  getDoc
+  Timestamp
 } from "firebase/firestore";
 import { NextResponse } from "next/server";
 import admin from "../../../lib/firebaseAdmin";
@@ -48,10 +47,13 @@ export async function GET(req) {
     // --- LOGIKA PAGINATION DIMULAI DI SINI ---
 
     const { searchParams } = new URL(req.url);
-    const lastVisibleId = searchParams.get("lastVisible");
+    // Cursor berupa timestamp milidetik dari dokumen terakhir di halaman
+    // sebelumnya (lihat lastVisibleTimestamp pada response). Ini menghindari
+    // 1 extra Firestore read (getDoc) per halaman yang sebelumnya diperlukan
+    // hanya untuk mendapatkan snapshot dokumen sebagai titik awal startAfter.
+    const lastVisibleMillis = searchParams.get("lastVisible");
 
     const certificatesRef = collection(db, "sertifikat_terbuat");
-    let q;
 
     const queryConstraints = [
       where("userId", "==", uid),
@@ -59,16 +61,13 @@ export async function GET(req) {
       limit(PAGE_SIZE)
     ];
 
-    if (lastVisibleId) {
-      const lastVisibleDoc = await getDoc(
-        doc(db, "sertifikat_terbuat", lastVisibleId)
+    if (lastVisibleMillis && !Number.isNaN(Number(lastVisibleMillis))) {
+      queryConstraints.push(
+        startAfter(Timestamp.fromMillis(Number(lastVisibleMillis)))
       );
-      if (lastVisibleDoc.exists()) {
-        queryConstraints.push(startAfter(lastVisibleDoc));
-      }
     }
 
-    q = query(certificatesRef, ...queryConstraints);
+    const q = query(certificatesRef, ...queryConstraints);
 
     // --- LOGIKA PAGINATION SELESAI ---
 
@@ -78,12 +77,21 @@ export async function GET(req) {
       certificates.push({ id: doc.id, ...doc.data() });
     });
 
-    // Dapatkan ID dokumen terakhir untuk halaman berikutnya
-    const lastDocId =
-      querySnapshot.docs[querySnapshot.docs.length - 1]?.id || null;
+    // Dapatkan cursor (timestamp dalam ms) dari dokumen terakhir untuk
+    // halaman berikutnya. Client mengirim balik nilai ini sebagai
+    // `lastVisible` pada request paginasi selanjutnya.
+    const lastDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
+    const lastDocId = lastDoc?.id || null;
+    const lastVisibleTimestamp =
+      lastDoc?.data()?.dibuatPada?.toMillis?.() || null;
     const hasMore = certificates.length === PAGE_SIZE;
 
-    return NextResponse.json({ certificates, lastDocId, hasMore });
+    return NextResponse.json({
+      certificates,
+      lastDocId,
+      lastVisibleTimestamp,
+      hasMore
+    });
   } catch (error) {
     console.error("Error fetching certificates:", error);
     return NextResponse.json(
