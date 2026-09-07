@@ -16,7 +16,7 @@
     "gray-matter": "^4.0.3",
     "jszip": "^3.10.1",
     "konva": "^10.0.2",
-    "next": "15.5.4",
+    "next": "15.5.9",
     "next-mdx-remote": "^5.0.0",
     "papaparse": "^5.5.3",
     "react": "19.1.0",
